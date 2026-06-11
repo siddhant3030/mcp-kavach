@@ -8,6 +8,5 @@
   },
   "homepage": "https://github.com/siddhant3030/mcp-kavach",
   "repository": "https://github.com/siddhant3030/mcp-kavach",
-  "keywords": ["pii", "privacy", "guardrail", "dpdp", "mcp"],
-  "hooks": "./hooks"
+  "keywords": ["pii", "privacy", "guardrail", "dpdp", "mcp"]
 }
