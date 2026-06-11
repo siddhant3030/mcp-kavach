@@ -1,0 +1,45 @@
+{
+  "description": "Synthetic NGO beneficiary rows (no real persons). Aadhaar values are Verhoeff-valid but randomly generated.",
+  "tool": "get_beneficiaries",
+  "direction": "result",
+  "policy": "ngo-default",
+  "payload": {
+    "rows": [
+      {
+        "id": 101,
+        "name": "Lakshmi Devi",
+        "phone": "+91 98765 43210",
+        "aadhaar": "2345 6789 0124",
+        "village": "Rampur",
+        "last_checkup": "2026-01-12"
+      },
+      {
+        "id": 102,
+        "name": "Ramesh Kumar",
+        "phone": "9123456780",
+        "email": "ramesh.kumar@example.org",
+        "pan_number": "ABCPK4321L",
+        "village": "Sitapur",
+        "last_checkup": "2025-11-02"
+      }
+    ]
+  },
+  "expected": [
+    { "path": "$.rows[0].name", "entity_type": "PERSON_NAME", "action": "mask" },
+    { "path": "$.rows[0].phone", "entity_type": "PHONE", "action": "partial_mask" },
+    { "path": "$.rows[0].aadhaar", "entity_type": "AADHAAR", "action": "block" },
+    { "path": "$.rows[1].name", "entity_type": "PERSON_NAME", "action": "mask" },
+    { "path": "$.rows[1].phone", "entity_type": "PHONE", "action": "partial_mask" },
+    { "path": "$.rows[1].email", "entity_type": "EMAIL", "action": "partial_mask" },
+    { "path": "$.rows[1].pan_number", "entity_type": "PAN", "action": "block" }
+  ],
+  "must_not_appear": [
+    "Lakshmi Devi",
+    "Ramesh Kumar",
+    "2345 6789 0124",
+    "ABCPK4321L",
+    "ramesh.kumar@example.org",
+    "98765 43210",
+    "9123456780"
+  ]
+}

@@ -1,0 +1,30 @@
+# Default policy for NGO deployments: contact info stays usable
+# (partial-masked), government/financial identifiers are blocked outright,
+# names and addresses never reach the model. Anything detected that no rule
+# covers is masked (fail closed).
+name: ngo-default
+version: 1
+defaults:
+  unknown_entity_action: mask
+  min_confidence: 0.4
+rules:
+  - id: secrets-block
+    entities: [AWS_ACCESS_KEY, GITHUB_TOKEN, JWT]
+    action: block
+    message: "This field contained a credential and was blocked by policy."
+  - id: govt-financial-block
+    entities: [AADHAAR, PAN, GOVT_ID, CREDIT_CARD, BANK_ACCOUNT]
+    action: block
+    message: "This field contained a government or financial identifier and was blocked by your organization's policy."
+  - id: contact-partial
+    entities: [EMAIL, PHONE]
+    action: partial_mask
+  - id: names-mask
+    entities: [PERSON_NAME]
+    action: mask
+  - id: location-redact
+    entities: [ADDRESS, DOB]
+    action: redact
+  - id: infra-allow
+    entities: [IP_ADDRESS, IFSC]
+    action: allow

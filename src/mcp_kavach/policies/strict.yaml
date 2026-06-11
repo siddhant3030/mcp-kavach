@@ -1,0 +1,31 @@
+# Maximum-restriction policy: any credential withholds the entire result;
+# every known PII entity is blocked at field level; unknown entities are
+# blocked too. Suitable for untrusted tools or compliance-sensitive demos.
+name: strict
+version: 1
+defaults:
+  unknown_entity_action: block
+  min_confidence: 0.3
+rules:
+  - id: secrets-kill
+    entities: [AWS_ACCESS_KEY, GITHUB_TOKEN, JWT]
+    action: block
+    scope: result
+    message: "The result contained a credential and was withheld entirely."
+  - id: pii-block
+    entities:
+      [
+        EMAIL,
+        PHONE,
+        AADHAAR,
+        PAN,
+        IFSC,
+        CREDIT_CARD,
+        GOVT_ID,
+        PERSON_NAME,
+        ADDRESS,
+        BANK_ACCOUNT,
+        DOB,
+        IP_ADDRESS,
+      ]
+    action: block

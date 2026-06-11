@@ -1,0 +1,16 @@
+# Development policy: only credentials and Aadhaar numbers are masked;
+# everything else passes through so you can see real payload shapes.
+# unknown_entity_action: allow also lets the engine skip detectors the
+# rules never act on. Never use in production.
+name: dev
+version: 1
+defaults:
+  unknown_entity_action: allow
+  min_confidence: 0.4
+rules:
+  - id: secrets-mask
+    entities: [AWS_ACCESS_KEY, GITHUB_TOKEN, JWT]
+    action: mask
+  - id: aadhaar-mask
+    entities: [AADHAAR]
+    action: mask
