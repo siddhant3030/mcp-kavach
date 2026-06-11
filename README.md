@@ -26,6 +26,8 @@
 [Docs](#-documentation) ·
 [Roadmap](#-roadmap)
 
+<img src="docs/assets/demo.gif" width="700" alt="kavach scan masking a phone number and blocking an Aadhaar number">
+
 </div>
 
 ---
