@@ -1,145 +1,197 @@
-# mcp-kavach
+<div align="center">
 
-**A privacy guardrail layer for MCP tool traffic.** *Kavach* (कवच) means armor.
+```
+██╗  ██╗ █████╗ ██╗   ██╗ █████╗  ██████╗██╗  ██╗
+██║ ██╔╝██╔══██╗██║   ██║██╔══██╗██╔════╝██║  ██║
+█████╔╝ ███████║██║   ██║███████║██║     ███████║
+██╔═██╗ ██╔══██║╚██╗ ██╔╝██╔══██║██║     ██╔══██║
+██║  ██╗██║  ██║ ╚████╔╝ ██║  ██║╚██████╗██║  ██║
+╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+```
 
-mcp-kavach sits between your MCP tools and the model: tool results are scanned for
-personal data *before* they reach the LLM, tool arguments are scrubbed *before* they
-reach the tool, and every decision is recorded in an audit trail that never stores
-the raw values. Policies are declarative YAML — per entity type, per tool, per field.
+**The PII guardrail for AI agents — nothing personal leaves your machine unmasked.**
 
-Built for organizations that handle beneficiary data — NGOs, health programs, social-sector
-data platforms — with an **India-first entity pack** (Aadhaar with Verhoeff checksum
-validation, PAN, IFSC) for DPDP Act compliance, alongside the universal set (emails,
-phones, cards with Luhn validation, IPs, credentials). Fully open source, fully
-self-hostable: sensitive data never touches a third-party vendor.
+prompts · tool calls · MCP traffic — detect → ask → mask · checksum-validated · hash-only audit · local-first · Apache-2.0
 
-## Where it sits
+[![CI](https://github.com/siddhant3030/mcp-kavach/actions/workflows/ci.yml/badge.svg)](https://github.com/siddhant3030/mcp-kavach/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/mcp-kavach)](https://pypi.org/project/mcp-kavach/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
-Of the four stages where agent guardrails live — data collection, model training,
-**agent tools & actions**, and prompt/response — this project owns stage 3, at the MCP
-protocol layer. That is the stage where structured tool traffic exists and where no
-open-source project had planted a flag. LLM gateways (Portkey, Bifrost, Kong) guard
-stage 4; data-platform tooling guards stages 1–2.
+</div>
 
-## Quickstart
+*Kavach* (कवच) means armor. You type your email into a Claude session, or an
+MCP tool dumps warehouse rows with phone numbers into the model's context —
+and that data is now in a third-party prompt log. kavach sits at every door
+and asks first.
+
+## Use it in Claude Code (60 seconds)
 
 ```bash
-pip install mcp-kavach
+pip install mcp-kavach        # or: uv tool install mcp-kavach
 ```
 
-```python
-from mcp_kavach import Engine, load_preset
+Inside Claude Code:
 
-engine = Engine(load_preset("ngo-default"))
-
-raw = {"rows": [{
-    "name": "Lakshmi Devi",
-    "phone": "+91 98765 43210",
-    "aadhaar": "2345 6789 0124",
-    "village": "Rampur",
-}]}
-
-result = engine.scan_result("get_beneficiaries", raw)
-print(result.payload)
-# {"rows": [{
-#     "name": "[MASKED:PERSON_NAME]",
-#     "phone": "+** ***** *3210",
-#     "aadhaar": "[BLOCKED:ngo-default/govt-financial-block]",
-#     "village": "Rampur",
-# }]}
-
-for event in result.events:
-    print(event.json_path, event.entity_type, event.action.value, event.value_hmac[:12])
-# $.rows[0].name     PERSON_NAME  mask          3f2a9c...   ← never the raw value
+```
+/plugin marketplace add siddhant3030/mcp-kavach
+/plugin install kavach@kavach
 ```
 
-The model still reasons fine over the masked rows — counts, dates, and villages are
-intact — but the personal data never left your infrastructure.
+Now try it — type a prompt with an email in it:
 
-## Policies
+```
+> my email is sid@example.org, write me a signature
+
+⛔ kavach blocked this prompt — it contains EMAIL (s***@example.org).
+
+   Masked version you can copy:
+   ┌────────────────────────────────────────────────────┐
+   │ my email is s***@example.org, write me a signature │
+   └────────────────────────────────────────────────────┘
+   To send the original anyway, resend the exact same message within 5 minutes.
+```
+
+Three guards ship enabled:
+
+| | Where | Default behavior |
+|---|---|---|
+| 🛑 **Prompt guard** | your messages | block + masked copy + confirm-by-resend |
+| ❓ **Tool-input guard** | MCP / Bash / WebFetch calls | native "share this anyway?" dialog |
+| 📢 **Tool-output detector** | MCP results | warning + hash-only audit (mask via `kavach proxy`, below) |
+
+Everything is configurable per-guard (`ask`/`mask`/`warn`/`off`) — see
+[docs/claude-plugin.md](docs/claude-plugin.md). No `kavach` CLI installed →
+the plugin stays silent and never breaks your session.
+
+## Mask MCP tool *outputs* with the proxy
+
+Claude Code hooks can't rewrite a tool result, so kavach ships an MCP gateway:
+wrap any server you can't modify, tools are mirrored 1:1, and every result is
+scrubbed before the model sees it.
+
+```json
+{ "mcpServers": { "warehouse-guarded": {
+    "command": "kavach",
+    "args": ["proxy", "--config", "~/.kavach/upstreams.json", "--policy", "ngo-default"]
+}}}
+```
+
+```
+tool returns                              model sees
+{"name": "Lakshmi Devi",          →       {"name": "[MASKED:PERSON_NAME]",
+ "phone": "+91 98765 43210",      →        "phone": "+** ***** *3210",
+ "aadhaar": "2345 6789 0124",     →        "aadhaar": "[BLOCKED:ngo-default/govt-financial-block]",
+ "village": "Rampur"}             →        "village": "Rampur"}
+```
+
+The model still reasons fine — counts, dates, villages intact. The person
+doesn't leak. Requires `pip install 'mcp-kavach[proxy]'`.
+
+## What it detects
+
+| Entity | Validation | | Entity | Validation |
+|---|---|---|---|---|
+| EMAIL | format | | AADHAAR 🇮🇳 | **Verhoeff checksum** |
+| PHONE (IN + intl) | digit boundaries | | PAN 🇮🇳 | holder-type check |
+| CREDIT_CARD | **Luhn checksum** | | IFSC 🇮🇳 | format |
+| IP_ADDRESS | octet range | | AWS / GitHub / JWT secrets | anchored formats |
+| PERSON_NAME, ADDRESS, DOB, BANK_ACCOUNT, GOVT_ID | column-name heuristics (structured data) | | | |
+
+Checksums kill most false positives (a random 12-digit number is rejected
+unless it passes Verhoeff). Try it:
+
+```bash
+$ kavach scan "call me at 9876543210 or lakshmi@example.org"
+call me at ******3210 or l***@example.org
+
+ENTITY           ACTION        RULE                     TIER CONF
+PHONE            partial_mask  contact-partial          1    0.90
+EMAIL            partial_mask  contact-partial          1    0.95
+```
+
+## Policies are YAML, not code
 
 ```yaml
-name: ngo-default
+name: my-org
 defaults:
   unknown_entity_action: mask        # fail closed
 rules:
   - id: contact-partial
     entities: [EMAIL, PHONE]
-    action: partial_mask             # l***@example.org, +** ***** *3210
-  - id: govt-financial-block
+    action: partial_mask             # l***@example.org, ******3210
+  - id: ids-block
     entities: [AADHAAR, PAN, CREDIT_CARD]
     action: block
-    message: "This field contained a government or financial ID and was blocked."
-  - id: beneficiary-notes
+    message: "Government/financial IDs don't go to the model. Org policy."
+  - id: notes-redact
     match: { tool: "get_beneficiar*", json_path: "$.rows[*].notes" }
-    action: redact                   # structural rule — no text scanning at all
+    action: redact                   # structural rule — zero text scanning
 ```
 
-Actions: `allow | partial_mask | mask | redact | block`. Rules apply first-match-wins
-in file order; `block` with `scope: result` withholds the entire payload. Three presets
-ship in the package: `ngo-default`, `strict`, `dev`. Full reference:
-[docs/policy-schema.md](docs/policy-schema.md).
+Actions `allow | partial_mask | mask | redact | block`, first-match-wins,
+`scope: result` refuses a whole payload. Four shipped presets: `personal`
+(plugin default), `ngo-default`, `strict`, `dev`.
+Reference: [docs/policy-schema.md](docs/policy-schema.md).
 
-## How detection works
+## Audit you can show your auditor
 
-Tiered, so you only pay for what the policy needs:
+Every detection is logged with entity type, detector tier, confidence, the
+rule that fired, JSON path, offsets — and a **salted HMAC instead of the
+value**. The log is safe to show to anyone cleared to see the redacted
+output. "Which categories of personal data left our infrastructure toward a
+model provider this quarter?" is one query. `/kavach:status` summarizes it
+inside Claude Code.
 
-| Tier | Cost | What runs |
-|------|------|-----------|
-| 0 | µs | Structural rules (JSON-path, no text scanning) + column-name heuristics |
-| 1 | sub-ms | Compiled regex with checksum gates: Aadhaar (Verhoeff), cards (Luhn), PAN, IFSC, email, phone, IP, AWS/GitHub/JWT credentials |
-| 2 | *(planned)* | NER (Presidio/spaCy) for free-text names and addresses |
-| 3 | *(planned, opt-in)* | LLM-based detection — local-model capable, never hard-wired to a commercial API |
+## Where kavach sits
 
-MCP traffic is structured JSON — kavach exploits that. Detection runs per string leaf
-(keys and types are never touched, so payload schemas stay valid), and a column named
-`aadhaar` is caught in microseconds without scanning a byte of text.
+Of the four agent-guardrail stages — data collection, model training,
+**agent tools & actions**, prompt/response — kavach owns stage 3 at the MCP
+protocol layer, where structured tool traffic actually exists. LLM gateways
+(Portkey, Kong) guard stage 4; nothing open-source guarded stage 3. Built for
+sovereignty-sensitive deployments (NGOs under India's DPDP Act): fully
+self-hosted, no vendor vault, no SaaS calls, every dependency permissive OSS.
 
-## Honest limitations (v0.1)
+## Honest limitations (v0.2)
 
-- **No NER yet.** Free-text Indian person names and addresses are caught only by
-  column-name heuristics (`name`, `father_name`, `address`, …) — a name buried inside
-  a `notes` paragraph will get through. Don't let regex create a false sense of security.
-- **Engine only.** The FastMCP middleware adapter and standalone proxy are the next
-  milestones; today you call `scan_request()`/`scan_result()` yourself (~10 lines —
-  see `src/mcp_kavach/adapters/__init__.py` for the contract).
-- **No reversible tokenization yet.** The vault ("rehydration") is designed but not built.
-- Checksums shrink false positives but can't eliminate them (~10% of random same-length
-  numbers pass any single checksum), and confidence is never 1.0.
-- This protects against **accidental PII exposure to the model provider**. It does not
-  protect against a malicious MCP server or prompt-injection exfiltration — see
-  [docs/threat-model.md](docs/threat-model.md).
+- **No NER yet** — free-text names/addresses are caught only via column-name
+  heuristics; a name inside a paragraph gets through. India-tuned NER is the
+  next milestone. Don't let regex create false confidence.
+- Prompt guard can't *rewrite* prompts (Claude Code hook limitation) — it
+  blocks and hands you the masked copy.
+- Tool-output hook can't *unsend* — it warns; true masking needs the proxy.
+- Checksums shrink false positives, can't zero them; confidence is never 1.0.
+- Protects against **accidental** exposure, not malicious servers or prompt
+  injection: [docs/threat-model.md](docs/threat-model.md).
 
-## Audit without leaking
+## Library use (any Python agent, 3 lines)
 
-Every event stores: entity type, detector tier, confidence, the policy rule that fired,
-the action, the JSON path and character offsets, and a **salted HMAC** of the raw value
-(set `KAVACH_HMAC_SALT` for cross-run correlation). Never the plaintext. The audit log
-is safe to show to anyone who can see the redacted output — including funders and
-auditors. "Show me every category of personal data that left our infrastructure this
-quarter" is one query.
+```python
+from mcp_kavach import Engine, load_preset
+
+engine = Engine(load_preset("ngo-default"))
+result = engine.scan_result("get_beneficiaries", rows)   # masked payload + audit events
+```
 
 ## Development
 
 ```bash
-uv sync
-uv run pytest
-uv run ruff check .
+uv sync && uv run pytest && uv run ruff check .
 ```
 
-The test suite includes a golden corpus of labeled synthetic payloads
-(`tests/fixtures/corpus/`) — synthetic NGO beneficiary records with
-checksum-valid Aadhaar/PAN/card numbers. No real personal data anywhere.
+128+ tests including a golden corpus of synthetic, checksum-valid records
+(no real personal data anywhere). Contributions welcome — especially
+detectors for more ID systems and an India-tuned NER pack:
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
-NER tier with an India-tuned recognizer pack → reversible tokenization vault +
-rehydration API → FastMCP middleware adapter → standalone MCP proxy (1:1 tool
-mirroring) → SQLite/Postgres audit sinks + CLI (`kavach test`, `kavach audit tail`) →
-policy packs (DPDP, GDPR).
+NER tier (Presidio + India-tuned recognizers) → reversible tokenization
+vault with rehydration at trusted sinks → SQLite/Postgres audit sinks +
+`kavach audit` CLI → policy packs (DPDP, GDPR, HIPAA-lite) → multilingual.
 
 ## License
 
-Apache-2.0. Every aspect of this project — code, presets, docs, test corpus — is open
-source, and all dependencies are permissively-licensed OSS. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the dependency policy.
+Apache-2.0 — code, presets, docs, corpus, everything. All dependencies are
+permissively-licensed OSS and every feature is self-hostable; that's policy,
+not accident ([CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md)).

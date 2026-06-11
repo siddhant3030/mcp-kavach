@@ -5,7 +5,7 @@ from mcp_kavach.engine import Engine
 from mcp_kavach.models import Action, AuditEvent, GuardrailResult, Span
 from mcp_kavach.policy import Policy, PolicyError, load_policy, load_preset, parse_policy
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Action",

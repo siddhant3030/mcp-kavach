@@ -54,19 +54,29 @@ posture all detectors run, because an entity must be *found* to be default-maske
 The future NER/LLM tiers will be lazy-loaded behind `[ner]`/`[llm]` extras and gated
 by policy so the base path stays sub-millisecond.
 
-## Adapter contract (future milestone)
+## Adapters (shipped in 0.2)
 
-An adapter has three responsibilities (see `src/mcp_kavach/adapters/__init__.py`):
-scan arguments before the tool runs, scan the result before it returns, and surface
-`result.blocked` as a refusal. Planned adapters:
+An adapter has three responsibilities: scan arguments before the tool runs,
+scan the result before it returns, and surface `result.blocked` as a refusal.
 
-- **FastMCP 3.x middleware** (`on_call_tool` hook) for servers you control.
-  ⚠️ The FastMCP 1.x bundled in the official `mcp` SDK (`mcp.server.fastmcp`) has
-  **no middleware system** — servers built on it (e.g. dalgo-mcp as of mid-2026)
-  need either a migration to standalone FastMCP or a tool-wrapper shim that
-  decorates each registered tool function.
-- **Standalone proxy** that fronts upstream MCP servers you can't modify, mirroring
-  their tools 1:1 (no `run_tool` meta-tool — native discovery UX is preserved).
+- **`adapters/fastmcp_middleware.py`** — `KavachMiddleware` for FastMCP 3.x
+  servers and proxies (`on_call_tool` hook; lazy-imported behind the `[proxy]`
+  extra). Scans `structured_content` and text content blocks (JSON-looking
+  text is parsed first so structural path rules apply); blocked results
+  return as `is_error` with the engine's block payload; engine failures are
+  fail-closed. ⚠️ The FastMCP 1.x bundled in the official `mcp` SDK
+  (`mcp.server.fastmcp`) has **no middleware system** — servers built on it
+  (e.g. dalgo-mcp as of mid-2026) need a migration or a tool-wrapper shim.
+- **`adapters/proxy.py` / `kavach proxy`** — standalone gateway over upstream
+  MCP servers you can't modify (fastmcp `create_proxy`). One upstream → tools
+  mirrored 1:1 under original names (no `run_tool` meta-tool); multiple
+  upstreams → `{server}_{tool}` prefixes (mind policy tool globs). Stdio mode:
+  stdout is the protocol channel, logs go to stderr.
+- **`hooks/` + the Claude Code plugin** (`plugins/kavach/`) — prompt guard
+  (block + confirm-by-resend), tool-input guard (ask/mask via
+  `permissionDecision`/`updatedInput`), tool-output detector (warn-only:
+  PostToolUse hooks cannot rewrite results — that's what the proxy is for).
+  Hooks fail open; see docs/claude-plugin.md.
 
 ## Open-source guarantee
 

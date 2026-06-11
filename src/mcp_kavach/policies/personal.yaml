@@ -1,0 +1,27 @@
+# Chat-oriented policy — the default for the Claude Code plugin.
+# Low friction: credentials and government/financial IDs are blocked,
+# contact info is partial-masked, everything else passes through.
+#
+# Note: PERSON_NAME/ADDRESS/DOB detection comes from column-name heuristics
+# (Tier 0), which never fire on free text — a name typed in a prompt is NOT
+# caught by this policy (NER tier is on the roadmap).
+name: personal
+version: 1
+defaults:
+  unknown_entity_action: allow
+  min_confidence: 0.4
+rules:
+  - id: secrets-block
+    entities: [AWS_ACCESS_KEY, GITHUB_TOKEN, JWT]
+    action: block
+    message: "A credential was detected and blocked."
+  - id: govt-financial-block
+    entities: [AADHAAR, PAN, CREDIT_CARD, BANK_ACCOUNT, GOVT_ID]
+    action: block
+    message: "A government or financial identifier was detected and blocked."
+  - id: contact-partial
+    entities: [EMAIL, PHONE]
+    action: partial_mask
+  - id: infra-allow
+    entities: [IP_ADDRESS, IFSC]
+    action: allow

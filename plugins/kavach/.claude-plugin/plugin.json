@@ -1,0 +1,13 @@
+{
+  "name": "kavach",
+  "version": "0.2.0",
+  "description": "PII guardrail for Claude Code — warns before prompts or tool calls share personal data with the model; masks what shouldn't leave.",
+  "author": {
+    "name": "Project Tech4Dev",
+    "url": "https://github.com/siddhant3030/mcp-kavach"
+  },
+  "homepage": "https://github.com/siddhant3030/mcp-kavach",
+  "repository": "https://github.com/siddhant3030/mcp-kavach",
+  "keywords": ["pii", "privacy", "guardrail", "dpdp", "mcp"],
+  "hooks": "./hooks"
+}

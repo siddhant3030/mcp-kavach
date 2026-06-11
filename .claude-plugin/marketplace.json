@@ -1,0 +1,26 @@
+{
+  "name": "kavach",
+  "owner": {
+    "name": "Siddhant",
+    "url": "https://github.com/siddhant3030"
+  },
+  "metadata": {
+    "description": "Kavach marketplace — PII guardrails for Claude Code.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "kavach",
+      "source": "./plugins/kavach",
+      "description": "PII guardrail: warns before your prompts or tool calls share personal data with the model, and masks what shouldn't leave.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Project Tech4Dev",
+        "url": "https://github.com/siddhant3030/mcp-kavach"
+      },
+      "homepage": "https://github.com/siddhant3030/mcp-kavach",
+      "repository": "https://github.com/siddhant3030/mcp-kavach",
+      "keywords": ["pii", "privacy", "security", "guardrail", "dpdp", "hooks", "mcp"]
+    }
+  ]
+}
