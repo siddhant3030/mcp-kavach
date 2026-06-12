@@ -90,3 +90,6 @@ declare them to the loader with `load_policy(path, extra_entities=["MY_ENTITY"])
   unknown → block.
 - **dev** — only credentials and Aadhaar masked; everything else passes. Not for
   production.
+- **dpdp**, **gdpr**, **hipaa-lite** — draft regulation packs (conservative
+  defaults, not legal advice); compared entity-by-entity in
+  [policy-packs.md](policy-packs.md).
