@@ -1,0 +1,52 @@
+# DRAFT — conservative defaults, not legal advice. Requirement-by-requirement
+# mapping is tracked in issue #15 (DPDP) / future issues (GDPR, HIPAA).
+#
+# India-focused pack for organizations handling personal data under the
+# Digital Personal Data Protection Act. Starts from ngo-default and tightens:
+# contact info is fully masked (not partial), IPs are masked, and anything
+# detected that no rule covers is masked (fail closed).
+#
+# Caveat: PERSON_NAME/ADDRESS/DOB detection comes from column-name heuristics
+# (Tier 0) — a name typed in free text is NOT caught yet (NER is on the roadmap).
+name: dpdp
+version: 1
+defaults:
+  # Fail closed: an entity we detect but have no rule for still gets masked.
+  unknown_entity_action: mask
+  min_confidence: 0.4
+rules:
+  # Credentials are not personal data, but leaking them is always a breach — block.
+  - id: secrets-block
+    entities: [AWS_ACCESS_KEY, GITHUB_TOKEN, JWT]
+    action: block
+    message: "This field contained a credential and was blocked by policy."
+  # Aadhaar and PAN are government IDs — DPDP treats them as sensitive, never send them to a model.
+  - id: govt-id-block
+    entities: [AADHAAR, PAN, GOVT_ID]
+    action: block
+    message: "This field contained a government identifier and was blocked by the DPDP policy pack."
+  # Card and bank account numbers enable financial fraud if leaked — block outright.
+  - id: financial-block
+    entities: [CREDIT_CARD, BANK_ACCOUNT]
+    action: block
+    message: "This field contained a financial identifier and was blocked by the DPDP policy pack."
+  # A person's name is personal data — replace it so the model never sees who this is.
+  - id: names-mask
+    entities: [PERSON_NAME]
+    action: mask
+  # Emails and phone numbers identify and reach a person — fully masked (no last-4 digits kept).
+  - id: contact-mask
+    entities: [EMAIL, PHONE]
+    action: mask
+  # Where someone lives and when they were born can re-identify them — remove entirely.
+  - id: location-dob-redact
+    entities: [ADDRESS, DOB]
+    action: redact
+  # An IP address can point to a person's device or location — mask it to be safe.
+  - id: ip-mask
+    entities: [IP_ADDRESS]
+    action: mask
+  # IFSC identifies a bank branch, not a person — safe to pass through.
+  - id: ifsc-allow
+    entities: [IFSC]
+    action: allow

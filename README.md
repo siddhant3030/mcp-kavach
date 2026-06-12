@@ -228,8 +228,9 @@ rules:
 ```
 
 Actions `allow | partial_mask | mask | redact | block`, first-match-wins,
-`scope: result` refuses a whole payload. Four shipped presets: `personal`
-(plugin default), `ngo-default`, `strict`, `dev`.
+`scope: result` refuses a whole payload. Seven shipped presets: `personal`
+(plugin default), `ngo-default`, `strict`, `dev`, plus draft regulation packs
+`dpdp`, `gdpr`, `hipaa-lite` ([docs/policy-packs.md](docs/policy-packs.md)).
 Reference: [docs/policy-schema.md](docs/policy-schema.md).
 
 ## 🧾 Audit you can show your auditor
@@ -282,6 +283,7 @@ result = engine.scan_result("get_beneficiaries", rows)   # masked payload + audi
 | [Architecture](docs/architecture.md) | engine internals, scan pipeline, performance posture |
 | [Claude Code plugin](docs/claude-plugin.md) | the three guards, per-guard config, proxy setup |
 | [Policy schema](docs/policy-schema.md) | full YAML reference for rules, actions, matching |
+| [Policy packs](docs/policy-packs.md) | draft DPDP / GDPR / HIPAA-lite presets compared |
 | [Threat model](docs/threat-model.md) | what kavach defends against — and what it doesn't |
 | [Demo script](docs/demo-script.md) | a 5-minute walkthrough you can run live |
 
@@ -301,7 +303,7 @@ detectors for more ID systems and an India-tuned NER pack:
 - [ ] **NER tier** — Presidio + India-tuned recognizers
 - [ ] **Reversible tokenization vault** with rehydration at trusted sinks
 - [ ] **SQLite/Postgres audit sinks** + `kavach audit` CLI
-- [ ] **Policy packs** — DPDP, GDPR, HIPAA-lite
+- [x] **Policy packs** — DPDP, GDPR, HIPAA-lite (draft, pending legal mapping in #15)
 - [ ] **Multilingual** detection
 
 ## 📄 License

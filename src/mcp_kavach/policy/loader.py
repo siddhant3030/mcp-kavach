@@ -57,7 +57,8 @@ def load_policy(path: str | Path, *, extra_entities: Iterable[str] = ()) -> Poli
 
 
 def load_preset(name: str, *, extra_entities: Iterable[str] = ()) -> Policy:
-    """Load a policy shipped with the package: ngo-default, strict, dev."""
+    """Load a policy shipped with the package: ngo-default, strict, dev,
+    personal, or a draft regulation pack (dpdp, gdpr, hipaa-lite)."""
     ref = importlib.resources.files("mcp_kavach.policies").joinpath(f"{name}.yaml")
     try:
         text = ref.read_text()
