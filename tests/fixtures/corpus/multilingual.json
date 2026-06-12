@@ -1,0 +1,43 @@
+{
+  "description": "Hindi field names and Devanagari-digit values (synthetic, no real persons). The Aadhaar is the Devanagari transliteration of a Verhoeff-valid fixture; the phone is ASCII 9876543210 in Devanagari digits.",
+  "tool": "get_beneficiaries",
+  "direction": "result",
+  "policy": "ngo-default",
+  "payload": {
+    "rows": [
+      {
+        "id": 201,
+        "नाम": "लक्ष्मी देवी",
+        "फ़ोन": "९८७६५४३२१०",
+        "aadhaar": "२३४५ ६७८९ ०१२४",
+        "गाँव": "रामपुर",
+        "last_checkup": "2026-01-12"
+      },
+      {
+        "id": 202,
+        "naam": "Ramesh Kumar",
+        "pata": "12 Temple Road, Sitapur",
+        "khata_no": "001234567890",
+        "janm_tithi": "1989-03-04"
+      }
+    ]
+  },
+  "expected": [
+    { "path": "$.rows[0].नाम", "entity_type": "PERSON_NAME", "action": "mask" },
+    { "path": "$.rows[0].फ़ोन", "entity_type": "PHONE", "action": "partial_mask" },
+    { "path": "$.rows[0].aadhaar", "entity_type": "AADHAAR", "action": "block" },
+    { "path": "$.rows[1].naam", "entity_type": "PERSON_NAME", "action": "mask" },
+    { "path": "$.rows[1].pata", "entity_type": "ADDRESS", "action": "redact" },
+    { "path": "$.rows[1].khata_no", "entity_type": "BANK_ACCOUNT", "action": "block" },
+    { "path": "$.rows[1].janm_tithi", "entity_type": "DOB", "action": "redact" }
+  ],
+  "must_not_appear": [
+    "लक्ष्मी देवी",
+    "९८७६५४",
+    "२३४५ ६७८९ ०१२४",
+    "Ramesh Kumar",
+    "Temple Road",
+    "001234567890",
+    "1989-03-04"
+  ]
+}

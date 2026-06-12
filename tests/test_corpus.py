@@ -25,8 +25,10 @@ def test_corpus(fixture_path):
         key = (exp["path"], exp["entity_type"], exp["action"])
         assert key in caught, f"missing detection {key}; got {sorted(caught)}"
 
-    serialized = json.dumps(result.payload) + json.dumps(
-        [e.model_dump(mode="json") for e in result.events]
+    # ensure_ascii=False so non-ASCII raw values (Devanagari fixtures) are
+    # compared as-is instead of as \uXXXX escapes.
+    serialized = json.dumps(result.payload, ensure_ascii=False) + json.dumps(
+        [e.model_dump(mode="json") for e in result.events], ensure_ascii=False
     )
     for raw in fixture["must_not_appear"]:
         assert raw not in serialized, f"raw value leaked: {raw!r}"

@@ -194,7 +194,12 @@ URL-based upstreams.
 | PAN 🇮🇳 | holder-type check |
 | IFSC 🇮🇳 | format |
 | AWS / GitHub / JWT secrets | anchored formats |
-| PERSON_NAME, ADDRESS, DOB, BANK_ACCOUNT, GOVT_ID | column-name heuristics (structured data) |
+| PERSON_NAME, ADDRESS, DOB, BANK_ACCOUNT, GOVT_ID | column-name heuristics (structured data, incl. Hindi: नाम, फ़ोन, पता, आधार, जन्मतिथि, खाता + romanizations) |
+
+Digits in any script count — ९८७६५४३२१० is still a phone number. Unicode
+decimal digits (Devanagari, Bengali, Tamil, Arabic-Indic, …) are normalized to
+ASCII before patterns and checksums run, while masked output preserves the
+original script: `संपर्क ९८७६५४३२१०` → `संपर्क ******३२१०`.
 
 Checksums kill most false positives (a random 12-digit number is rejected
 unless it passes Verhoeff). Try it:
