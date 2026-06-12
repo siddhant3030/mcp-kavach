@@ -22,10 +22,10 @@ surface never means touching detection logic.
             ◀── │  (rules,     T0 structural   partial/block) │ ◀──
                 │  defaults)   T1 regex            │          │
                 │              T2 NER*             ▼          │
-                │              T3 LLM*        Audit events    │
+                │              T3 LLM†        Audit events    │
                 │                             (hash-only)     │
                 └─────────────────────────────────────────────┘
-                          * planned, behind extras
+                  * opt-in, behind the [ner] extra   † planned
 ```
 
 Reading the diagram left to right: a payload comes in, the **policy** decides
@@ -84,7 +84,7 @@ detector matched.
 3. **Tier 0 — structural detectors.** `ColumnNameDetector` flags whole values
    by the field name holding them (`aadhaar`, `father_name`, …) — including
    Hindi/Hinglish field names (`नाम`, `फ़ोन`, `पता`, `naam`, `khata_no`, …).
-   Until the NER tier exists, this is the only way free-text names and
+   Without the NER tier installed, this is the only way free-text names and
    addresses get caught.
 4. **Tier 1 — regex detectors.** Each leaf's text is first digit-normalized:
    every Unicode decimal digit (Devanagari ९, Bengali ৯, …) maps 1:1 to its
@@ -96,18 +96,22 @@ detector matched.
    treated as wholly sensitive). Entities with checksums — Aadhaar
    (Verhoeff), cards (Luhn) — reject false candidates in `validate()` on the
    normalized ASCII digits: a random 12-digit number does not survive.
-5. **Resolve.** Every span gets exactly one action, by precedence: a pinned
+5. **Tier 2 — NER (optional).** When the `[ner]` extra is installed and the
+   policy needs it, Presidio + spaCy scan string leaves (the same
+   digit-normalized copy) for free-text names, locations, and India-context
+   patterns. See [The NER tier](#the-ner-tier-ner-extra).
+6. **Resolve.** Every span gets exactly one action, by precedence: a pinned
    structural rule wins; otherwise the first policy rule (in file order) listing
    that entity; otherwise the policy's `defaults.unknown_entity_action`. Spans
    below `defaults.min_confidence` are dropped.
-6. **Transform.** Within a leaf, overlapping spans are clustered, and the
+7. **Transform.** Within a leaf, overlapping spans are clustered, and the
    cluster takes its most severe action (block > redact > tokenize > mask >
    partial_mask > allow) across the combined extent. `tokenize` swaps the span
    for a stable `[PERSON_NAME_1]` token from the local
    [vault](vault.md) (falling back to `mask` when no vault is configured).
    Replacements apply right-to-left so earlier offsets stay valid. The payload
    is rebuilt from scratch — the caller's object is never mutated.
-7. **Audit.** One event per finding: entity type, detector tier, confidence,
+8. **Audit.** One event per finding: entity type, detector tier, confidence,
    rule id, action, rendered path, character offsets, and a salted HMAC of the
    matched text. Plaintext never enters an event; the only code that touches
    the raw string is `audit.hmac_value()`.
@@ -120,12 +124,48 @@ Each tier catches what the previous one can't, and costs more than it:
 |---|---|---|---|
 | T0 structural | field names + JSON-path rules | known data shapes, free-text columns | ~zero (no text scanning) |
 | T1 regex + checksum | compiled patterns, Verhoeff/Luhn validation | formatted IDs, emails, phones, secrets | microseconds per leaf |
-| T2 NER *(planned)* | Presidio + India-tuned models | names/addresses inside free text | model inference, opt-in extra |
+| T2 NER (`[ner]` extra) | Presidio + spaCy, India-tuned recognizers | names/addresses/UPI IDs inside free text | model inference, opt-in |
 | T3 LLM *(planned)* | local model judgment | context-dependent edge cases | highest, opt-in extra |
 
 Research on PII detection consistently shows the failure modes are
 complementary — regex lacks semantic understanding; NER has limited type
 coverage — which is why kavach layers them instead of betting on either.
+
+## The NER tier (`[ner]` extra)
+
+```bash
+uv tool install 'mcp-kavach[ner]'        # or: pip install 'mcp-kavach[ner]'
+python -m spacy download en_core_web_sm  # any en_core_web_* model works
+```
+
+The base install is untouched: `detectors/ner.py` never imports presidio at
+module level, and when the extra (or its spaCy model) is missing the loader
+returns None and the scan runs exactly as before. The analyzer is built once
+per process, on the first string leaf scanned, and reused across engines.
+
+What it adds:
+
+- **spaCy NER via Presidio** — PERSON → `PERSON_NAME`, LOCATION → `ADDRESS`,
+  inside free text, not just behind a column name.
+- **India-context recognizers** — Aadhaar/PAN/IFSC-shaped strings start below
+  the confidence bar and get Presidio's context boost only when words like
+  "aadhaar", "itr", or "neft" appear nearby. This catches e.g. an Aadhaar with
+  a typo'd digit (which T1 rightly rejects on the Verhoeff check) sitting next
+  to the word "aadhaar". UPI VPAs (`name@bank`) surface as `UPI_ID` only with
+  payment context, so emails don't false-positive.
+- **Indic name deny-list** — a small list of common transliterated Indian
+  given names spaCy's English models often miss, matched case-sensitively.
+
+Two calibration rules: T2 confidence is capped at 0.84, strictly below any
+checksum-validated T1 match, and the policy gates loading via `defaults.ner` —
+`auto` (default: load only when the policy acts on entities tiers 0–1 can't
+find in free text: `PERSON_NAME`, `ADDRESS`, `UPI_ID`), `true` (always load if
+installed), `false` (never). With `auto`, the `personal` and `dev` presets
+keep the tier off; `ngo-default` and `strict` use it when installed.
+
+One operational note: Claude Code hook processes are short-lived, so each
+invocation pays the spaCy model load. The long-lived proxy (`kavach proxy`)
+is the right surface for NER.
 
 ## Performance posture
 
@@ -134,9 +174,10 @@ posture), the engine prunes detectors down to the entities the policy actually
 acts on. In every other posture all detectors run — an entity has to be *found*
 before it can be default-masked. ("Fail closed": when the policy doesn't know an
 entity, the safe default is to mask it, which requires looking for everything.)
-Tier 0 is path checks; Tier 1 is compiled regex over leaf strings. The NER/LLM
-tiers will be lazy-loaded behind `[ner]`/`[llm]` extras and gated by policy, so
-the base path stays sub-millisecond.
+Tier 0 is path checks; Tier 1 is compiled regex over leaf strings. The NER
+tier is lazy-loaded behind the `[ner]` extra and gated by `defaults.ner`
+(the LLM tier will follow the same pattern), so the base path stays
+sub-millisecond.
 
 ## Adapters (shipped in 0.2)
 
