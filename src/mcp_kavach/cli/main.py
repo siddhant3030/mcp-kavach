@@ -27,6 +27,12 @@ def main(argv: list[str] | None = None) -> int:
     scan_p = sub.add_parser("scan", help="dry-run a policy against text")
     scan_p.add_argument("text")
     scan_p.add_argument("--policy", default="personal", help="preset name or YAML path")
+    scan_p.add_argument(
+        "--vault", nargs="?", const="", metavar="PATH",
+        help="enable tokenize actions; optional vault path (default: "
+        "$KAVACH_DATA_DIR/vault.db)",
+    )
+    scan_p.add_argument("--scope", default=None, help="vault scope (default: 'default')")
 
     proxy_p = sub.add_parser(
         "proxy", help="run a masking MCP proxy over upstream servers (stdio)"
@@ -44,6 +50,25 @@ def main(argv: list[str] | None = None) -> int:
         "a .db/.sqlite path, or a postgres:// URL",
     )
     proxy_p.add_argument("--name", default="kavach-proxy")
+    proxy_p.add_argument(
+        "--vault", nargs="?", const="", metavar="PATH",
+        help="enable tokenize actions; optional vault path (default: "
+        "$KAVACH_DATA_DIR/vault.db)",
+    )
+    proxy_p.add_argument("--scope", default=None, help="vault scope (default: 'default')")
+
+    rehydrate_p = sub.add_parser(
+        "rehydrate",
+        help="trusted sink: replace [ENTITY_N] tokens with their original values",
+    )
+    rehydrate_p.add_argument(
+        "file", nargs="?", help="file to rehydrate (default: read stdin)"
+    )
+    rehydrate_p.add_argument(
+        "--vault", metavar="PATH",
+        help="vault path (default: $KAVACH_DATA_DIR/vault.db)",
+    )
+    rehydrate_p.add_argument("--scope", default=None, help="vault scope (default: 'default')")
 
     audit_p = sub.add_parser("audit", help="inspect the hash-only audit log")
     audit_sub = audit_p.add_subparsers(dest="audit_command", required=True)
@@ -72,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
         return _proxy(args)
     if args.command == "audit":
         return _audit(args)
+    if args.command == "rehydrate":
+        return _rehydrate(args)
     from mcp_kavach import __version__
 
     print(f"mcp-kavach {__version__}")
@@ -90,11 +117,22 @@ def _hook(event: str) -> int:
     return run_hook(handlers[event])
 
 
+def _open_vault(args: argparse.Namespace):
+    """--vault with no value means 'use the default path'; absent means None."""
+    if getattr(args, "vault", None) is None:
+        return None
+    from mcp_kavach.vault import DEFAULT_SCOPE, Vault
+
+    return Vault(args.vault or None, scope=args.scope or DEFAULT_SCOPE)
+
+
 def _scan(args: argparse.Namespace) -> int:
     from mcp_kavach.engine import Engine
     from mcp_kavach.hooks.config import resolve_policy
 
-    engine = Engine(resolve_policy(args.policy), hmac_salt=b"kavach-scan-dry-run")
+    engine = Engine(
+        resolve_policy(args.policy), hmac_salt=b"kavach-scan-dry-run", vault=_open_vault(args)
+    )
     result = engine.scan_request("scan", args.text)
     print(result.payload)
     if result.events:
@@ -138,8 +176,18 @@ def _proxy(args: argparse.Namespace) -> int:
         sink=open_sink(args.audit) if args.audit else None,
         hmac_salt=hmac_salt(),
         name=args.name,
+        vault=_open_vault(args),
     )
     proxy.run()
+    return 0
+
+
+def _rehydrate(args: argparse.Namespace) -> int:
+    from mcp_kavach.vault import DEFAULT_SCOPE, Vault
+
+    text = Path(args.file).read_text() if args.file else sys.stdin.read()
+    with Vault(args.vault, scope=args.scope or DEFAULT_SCOPE) as vault:
+        sys.stdout.write(vault.rehydrate(text))
     return 0
 
 

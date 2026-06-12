@@ -101,10 +101,12 @@ detector matched.
    that entity; otherwise the policy's `defaults.unknown_entity_action`. Spans
    below `defaults.min_confidence` are dropped.
 6. **Transform.** Within a leaf, overlapping spans are clustered, and the
-   cluster takes its most severe action (block > redact > mask > partial_mask >
-   allow) across the combined extent. Replacements apply right-to-left so
-   earlier offsets stay valid. The payload is rebuilt from scratch — the
-   caller's object is never mutated.
+   cluster takes its most severe action (block > redact > tokenize > mask >
+   partial_mask > allow) across the combined extent. `tokenize` swaps the span
+   for a stable `[PERSON_NAME_1]` token from the local
+   [vault](vault.md) (falling back to `mask` when no vault is configured).
+   Replacements apply right-to-left so earlier offsets stay valid. The payload
+   is rebuilt from scratch — the caller's object is never mutated.
 7. **Audit.** One event per finding: entity type, detector tier, confidence,
    rule id, action, rendered path, character offsets, and a salted HMAC of the
    matched text. Plaintext never enters an event; the only code that touches

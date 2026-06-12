@@ -14,6 +14,7 @@ from typing import Any
 from mcp_kavach.audit import AuditSink
 from mcp_kavach.engine import Engine
 from mcp_kavach.policy import Policy
+from mcp_kavach.transform import TokenVault
 
 
 def build_proxy(
@@ -24,6 +25,7 @@ def build_proxy(
     sink: AuditSink | None = None,
     hmac_salt: bytes | None = None,
     name: str = "kavach-proxy",
+    vault: TokenVault | None = None,
 ):
     """upstream: an ``{"mcpServers": {...}}`` dict (Claude .mcp.json shape),
     a bare ``{name: spec}`` mapping, or a FastMCP instance (tests)."""
@@ -39,6 +41,6 @@ def build_proxy(
     if isinstance(upstream, dict) and "mcpServers" not in upstream:
         target = {"mcpServers": upstream}
     proxy = create_proxy(target, name=name)
-    engine = Engine(policy, sink=sink, hmac_salt=hmac_salt)
+    engine = Engine(policy, sink=sink, hmac_salt=hmac_salt, vault=vault)
     proxy.add_middleware(KavachMiddleware(engine, scan_arguments=scan_arguments))
     return proxy

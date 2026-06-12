@@ -22,7 +22,7 @@ from mcp_kavach.detectors.normalize import normalize_digits
 from mcp_kavach.models import Action, AuditEvent, Finding, GuardrailResult, PathTuple, Span
 from mcp_kavach.pathmatch import CompiledPath, compile_path, render_path
 from mcp_kavach.policy.schema import Policy, Rule
-from mcp_kavach.transform import transform_text, transform_whole_value
+from mcp_kavach.transform import TokenVault, transform_text, transform_whole_value
 
 logger = logging.getLogger("mcp_kavach")
 
@@ -38,9 +38,12 @@ class Engine:
         hmac_salt: bytes | None = None,
         extra_detectors: Iterable[Detector] = (),
         extra_structural: Iterable[StructuralDetector] = (),
+        vault: TokenVault | None = None,
     ) -> None:
         self.policy = policy
         self.sink = sink
+        self.vault = vault
+        self._warned_no_vault = False
         salt = hmac_salt or os.environ.get("KAVACH_HMAC_SALT", "").encode() or None
         if salt is None:
             salt = _secrets.token_bytes(32)
@@ -102,7 +105,7 @@ class Engine:
                     Finding(
                         span=Span(0, len(text), "STRUCTURAL", 1.0, 0, "policy_match"),
                         path=path,
-                        resolved_action=pinned.action,
+                        resolved_action=self._effective(pinned.action),
                         rule_id=pinned.id,
                     )
                 )
@@ -135,13 +138,13 @@ class Engine:
                     Finding(
                         span=span,
                         path=path,
-                        resolved_action=action,
+                        resolved_action=self._effective(action),
                         rule_id=rule.id if rule else None,
                     )
                 )
 
         events = [self._event(tool, direction, f, leaf_text) for f in findings]
-        new_payload = _rebuild(payload, (), _group(findings), self.policy.name)
+        new_payload = _rebuild(payload, (), _group(findings), self.policy.name, self.vault)
         for event in events:
             self._emit(event)
         return GuardrailResult(payload=new_payload, events=events)
@@ -153,6 +156,22 @@ class Engine:
             if fnmatch.fnmatch(tool, rule.match.tool) and matches(compiled, path):
                 return rule  # first match wins, in policy file order
         return None
+
+    def _effective(self, action: Action) -> Action:
+        """Fail-safe: tokenize needs a vault; without one, degrade to mask
+        so the value is still hidden (just not consistently or reversibly).
+        Findings and audit events record the action actually applied."""
+        if action is Action.TOKENIZE and self.vault is None:
+            if not self._warned_no_vault:
+                self._warned_no_vault = True
+                logger.warning(
+                    "policy %r uses action 'tokenize' but no vault is configured; "
+                    "falling back to 'mask' — pass Engine(vault=Vault(...)) or "
+                    "use --vault to enable consistent tokens",
+                    self.policy.name,
+                )
+            return Action.MASK
+        return action
 
     def _resolve(self, entity_type: str) -> tuple[Action, Rule | None]:
         for rule in self._entity_rules:
@@ -244,16 +263,17 @@ def _rebuild(
     path: PathTuple,
     findings_by_path: dict[PathTuple, list[Finding]],
     policy_name: str,
+    vault: TokenVault | None = None,
 ) -> Any:
     """Recreate the payload with transformations applied — never mutates."""
     if isinstance(node, dict):
         return {
-            k: _rebuild(v, (*path, k), findings_by_path, policy_name)
+            k: _rebuild(v, (*path, k), findings_by_path, policy_name, vault)
             for k, v in node.items()
         }
     if isinstance(node, list):
         return [
-            _rebuild(v, (*path, i), findings_by_path, policy_name)
+            _rebuild(v, (*path, i), findings_by_path, policy_name, vault)
             for i, v in enumerate(node)
         ]
     findings = [
@@ -262,5 +282,5 @@ def _rebuild(
     if not findings:
         return node
     if isinstance(node, str):
-        return transform_text(node, findings, policy_name)
-    return transform_whole_value(node, findings, policy_name)
+        return transform_text(node, findings, policy_name, vault)
+    return transform_whole_value(node, findings, policy_name, vault)

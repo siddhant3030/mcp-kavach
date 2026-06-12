@@ -49,11 +49,15 @@ rules:
 | `allow` | unchanged (still audited) |
 | `partial_mask` | entity-specific template: phones/Aadhaar/cards keep last 4 digits, emails keep first char + domain; entities with no safe template fall back to a full mask |
 | `mask` | `[MASKED:ENTITY_TYPE]` |
+| `tokenize` | stable, reversible `[PERSON_NAME_1]`-style token from the local [vault](vault.md) — same value, same token. Falls back to `mask` (with a warning) when no vault is configured |
 | `redact` | `[REDACTED]` |
 | `block` | `[BLOCKED:policy/rule-id]`, or the whole payload refused with `scope: result` |
 
 When overlapping detections disagree, the highest-severity action wins:
-`block > redact > mask > partial_mask > allow`.
+`block > redact > tokenize > mask > partial_mask > allow`. `tokenize` sits
+above `mask` because a token hides just as many characters while losing
+nothing (the value is vaulted); it sits below `redact`/`block` because a
+reversible token must never override an explicitly irreversible action.
 
 ## json_path grammar
 

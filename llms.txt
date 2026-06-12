@@ -3,8 +3,8 @@
 > Privacy guardrail for MCP tool traffic and Claude Code: detects PII
 > (India-first: Aadhaar/Verhoeff, PAN, IFSC; plus emails, phones, cards/Luhn,
 > credentials), applies declarative YAML policies (allow/partial_mask/mask/
-> redact/block), keeps a hash-only audit trail. Apache-2.0, self-hostable,
-> no external services.
+> tokenize/redact/block), keeps a hash-only audit trail. Apache-2.0,
+> self-hostable, no external services.
 
 ## Docs
 
@@ -12,6 +12,7 @@
 - [Claude Code plugin](docs/claude-plugin.md): the three guards, proxy setup, config
 - [Policy schema](docs/policy-schema.md): YAML reference, actions, json_path grammar, entity types
 - [Architecture](docs/architecture.md): tiers, scan pipeline, adapter contract
+- [Vault](docs/vault.md): reversible tokenization — stable [ENTITY_N] tokens, kavach rehydrate
 - [Threat model](docs/threat-model.md): what it protects against and what it does not
 
 ## Code
@@ -20,4 +21,5 @@
 - [Detectors](src/mcp_kavach/detectors/): regex + checksum entity detectors, column-name heuristics
 - [Hooks](src/mcp_kavach/hooks/): Claude Code hook handlers (prompt/tool-input/tool-output guards)
 - [Proxy](src/mcp_kavach/adapters/proxy.py): masking MCP gateway (fastmcp)
+- [Vault](src/mcp_kavach/vault/store.py): SQLite token store, Fernet-encrypted values
 - [Presets](src/mcp_kavach/policies/): personal, ngo-default, strict, dev
