@@ -6,11 +6,13 @@ Show the user their kavach PII-guard status. Follow these steps:
 
 1. Run `kavach version`. If the command is missing, tell the user the guards are
    inactive and to install with `pip install mcp-kavach`, then stop.
-2. Read the audit log at `${KAVACH_DATA_DIR:-$HOME/.local/share/kavach}/audit.jsonl`
-   (last ~100 lines; it contains only entity types and salted hashes — never raw
-   values, so it is safe to display). Summarize: counts by entity type, by tool,
-   by action taken, and the most recent few events with timestamps. If the file
-   doesn't exist, say no PII has been detected yet.
+2. Run `kavach audit report` and show its output (it aggregates the hash-only
+   audit log by entity type, action, and tool — the log contains only entity
+   types and salted hashes, never raw values, so it is safe to display). If it
+   prints "no audit events", say no PII has been detected yet. If the `audit`
+   subcommand is missing (older install), fall back to reading the last ~100
+   lines of `${KAVACH_DATA_DIR:-$HOME/.local/share/kavach}/audit.jsonl` and
+   summarize counts by entity type, tool, and action yourself.
 3. If `~/.kavach/config.yaml` exists, show the effective settings; otherwise state
    the defaults: policy `personal`, prompt_guard `confirm`, tool_input_guard `ask`,
    tool_output_guard `warn`.

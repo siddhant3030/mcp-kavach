@@ -8,9 +8,9 @@ from pathlib import Path
 
 import yaml
 
-from mcp_kavach.audit import AuditSink
+from mcp_kavach.audit import AuditSink, open_sink
 from mcp_kavach.engine import Engine
-from mcp_kavach.hooks.runner import hmac_salt
+from mcp_kavach.hooks.runner import data_dir, hmac_salt
 from mcp_kavach.policy import Policy, load_policy, load_preset
 
 # Local-only built-ins: their inputs never leave the machine, so scanning
@@ -26,6 +26,9 @@ class HookConfig:
     tool_output_guard: str = "warn"  # warn | off
     tool_allowlist: tuple[str, ...] = field(default_factory=lambda: _DEFAULT_ALLOWLIST)
     confirm_window_seconds: int = 300
+    # Audit destination: a .jsonl path (default), a .db/.sqlite path, or a
+    # postgres:// URL. Empty means $KAVACH_DATA_DIR/audit.jsonl.
+    audit: str = ""
 
 
 def load_config() -> HookConfig:
@@ -40,6 +43,7 @@ def load_config() -> HookConfig:
                 "tool_input_guard",
                 "tool_output_guard",
                 "confirm_window_seconds",
+                "audit",
             ):
                 if key in data:
                     setattr(cfg, key, data[key])
@@ -57,6 +61,7 @@ def load_config() -> HookConfig:
         )
     if env.get("KAVACH_CONFIRM_WINDOW"):
         cfg.confirm_window_seconds = int(env["KAVACH_CONFIRM_WINDOW"])
+    cfg.audit = env.get("KAVACH_AUDIT", cfg.audit)
     return cfg
 
 
@@ -65,6 +70,12 @@ def resolve_policy(ref: str) -> Policy:
     if os.sep in ref or ref.endswith((".yaml", ".yml")) or Path(ref).is_file():
         return load_policy(ref)
     return load_preset(ref)
+
+
+def audit_sink(cfg: HookConfig) -> AuditSink:
+    """The configured audit sink (JSONL by default; SQLite/Postgres via the
+    `audit` config key or KAVACH_AUDIT)."""
+    return open_sink(cfg.audit or data_dir() / "audit.jsonl")
 
 
 def load_engine(cfg: HookConfig, *, sink: AuditSink | None = None) -> Engine:
