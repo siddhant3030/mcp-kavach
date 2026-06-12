@@ -21,6 +21,7 @@
 
 [Quick Start](#-quick-start-claude-code-in-60-seconds) ·
 [Masking Proxy](#-mask-mcp-tool-outputs-with-the-proxy) ·
+[Docker](#-docker) ·
 [Detection](#-what-it-detects) ·
 [Policies](#-policies-are-yaml-not-code) ·
 [Docs](#-documentation) ·
@@ -54,7 +55,7 @@ and asks first.
 ## 🚀 Quick start: Claude Code in 60 seconds
 
 ```bash
-pip install mcp-kavach        # or: uv tool install mcp-kavach
+uv tool install mcp-kavach        # or: pip install mcp-kavach
 ```
 
 Inside Claude Code:
@@ -96,12 +97,46 @@ Claude Code hooks can't rewrite a tool result, so kavach ships an MCP gateway:
 wrap any server you can't modify, tools are mirrored 1:1, and every result is
 scrubbed before the model sees it.
 
-```json
-{ "mcpServers": { "warehouse-guarded": {
-    "command": "kavach",
-    "args": ["proxy", "--config", "~/.kavach/upstreams.json", "--policy", "ngo-default"]
-}}}
+```bash
+uv tool install 'mcp-kavach[proxy]'       # the proxy extra pulls in fastmcp
 ```
+
+**1. Move your real server into an upstreams file** — `~/.kavach/upstreams.json`,
+the standard `.mcp.json` shape (env vars carry over unchanged):
+
+```json
+{
+  "mcpServers": {
+    "warehouse": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/warehouse-mcp", "warehouse-mcp"],
+      "env": { "WAREHOUSE_API_URL": "http://localhost:8002" }
+    }
+  }
+}
+```
+
+**2. Point your MCP client at the proxy instead** — Claude Code's `.mcp.json`,
+Cursor, or any other client. Keep the same server key: with a single upstream,
+tools are mirrored 1:1 under their original names, so nothing else about your
+setup changes:
+
+```json
+{
+  "mcpServers": {
+    "warehouse": {
+      "command": "kavach",
+      "args": ["proxy",
+               "--config", "/Users/you/.kavach/upstreams.json",
+               "--policy", "ngo-default",
+               "--audit", "/Users/you/.local/share/kavach/audit.jsonl"]
+    }
+  }
+}
+```
+
+**3. Restart your session.** Every tool result now passes through the policy
+before the model sees it:
 
 ```
 tool returns                              model sees
@@ -112,7 +147,40 @@ tool returns                              model sees
 ```
 
 The model still reasons fine — counts, dates, villages intact. The person
-doesn't leak. Requires `pip install 'mcp-kavach[proxy]'`.
+doesn't leak. With multiple upstreams in one config, tools are prefixed
+`{server}_{tool}` — mind your policy tool globs.
+
+## 🐳 Docker
+
+The proxy also ships as a container — useful when you'd rather not install
+Python tooling on the host, or want the guardrail pinned in CI:
+
+```bash
+docker build -t kavach .
+docker run -i --rm -v ~/.kavach:/config kavach \
+  proxy --config /config/upstreams.json --policy ngo-default
+```
+
+Or point your MCP client straight at the container (releases publish
+`ghcr.io/siddhant3030/mcp-kavach`):
+
+```json
+{
+  "mcpServers": {
+    "warehouse": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-v", "/Users/you/.kavach:/config",
+               "ghcr.io/siddhant3030/mcp-kavach",
+               "proxy", "--config", "/config/upstreams.json", "--policy", "ngo-default"]
+    }
+  }
+}
+```
+
+`-i` matters: stdio is the MCP protocol channel. One caveat — upstream servers
+defined as *commands* must exist inside the container, so either derive an image
+that installs them (`FROM ghcr.io/siddhant3030/mcp-kavach` + your server) or use
+URL-based upstreams.
 
 ## 🔍 What it detects
 
@@ -195,6 +263,10 @@ self-hosted, no vendor vault, no SaaS calls, every dependency permissive OSS.
   injection: [docs/threat-model.md](docs/threat-model.md).
 
 ## 🐍 Library use (any Python agent, 3 lines)
+
+```bash
+uv add mcp-kavach        # or: pip install mcp-kavach
+```
 
 ```python
 from mcp_kavach import Engine, load_preset

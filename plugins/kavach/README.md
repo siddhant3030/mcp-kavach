@@ -11,7 +11,7 @@ PII guardrail for Claude Code. Three guards, one engine:
 ## Install
 
 ```bash
-pip install mcp-kavach          # the engine (or: uv tool install mcp-kavach)
+uv tool install mcp-kavach      # the engine (or: pip install mcp-kavach)
 ```
 
 Then in Claude Code:
@@ -21,8 +21,8 @@ Then in Claude Code:
 /plugin install kavach@kavach
 ```
 
-Without the `pip install`, the plugin stays silent (fails open) and tells you once
-per session how to enable it.
+Without the engine installed, the plugin stays silent (fails open) and tells you
+once per session how to enable it.
 
 ## Configure
 

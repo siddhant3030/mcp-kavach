@@ -13,7 +13,7 @@ Claude Code's hook capabilities, so be precise about expectations:
 ## Install
 
 ```bash
-pip install mcp-kavach            # or: uv tool install mcp-kavach
+uv tool install mcp-kavach        # or: pip install mcp-kavach
 ```
 
 In Claude Code:
@@ -93,7 +93,7 @@ Then point Claude Code (`.mcp.json` or `claude mcp add`) at the proxy instead:
 }
 ```
 
-Requires `pip install 'mcp-kavach[proxy]'`. With one upstream, tools keep
+Requires `uv tool install 'mcp-kavach[proxy]'`. With one upstream, tools keep
 their original names (1:1 mirroring, no meta-tool). With several upstreams in
 one config, fastmcp prefixes tools as `{server}_{tool}` — write policy
 `match.tool` globs accordingly. Add `--scan-arguments` to scrub tool inputs at
