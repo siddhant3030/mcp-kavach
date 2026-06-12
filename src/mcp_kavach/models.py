@@ -16,17 +16,24 @@ class Action(str, Enum):
     ALLOW = "allow"
     PARTIAL_MASK = "partial_mask"
     MASK = "mask"
+    TOKENIZE = "tokenize"
     REDACT = "redact"
     BLOCK = "block"
 
 
 # When overlapping spans resolve to different actions, the highest severity wins.
+# tokenize sits above mask: both hide every plaintext character, but a token
+# additionally preserves the value in the vault, so on a conflict nothing is
+# lost by choosing it. redact and block stay above tokenize — they exist to
+# hide even the entity type or the whole payload, and a *reversible* token
+# must never override an explicitly irreversible action.
 SEVERITY: dict[Action, int] = {
     Action.ALLOW: 0,
     Action.PARTIAL_MASK: 1,
     Action.MASK: 2,
-    Action.REDACT: 3,
-    Action.BLOCK: 4,
+    Action.TOKENIZE: 3,
+    Action.REDACT: 4,
+    Action.BLOCK: 5,
 }
 
 

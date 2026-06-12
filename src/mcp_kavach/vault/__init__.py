@@ -1,7 +1,10 @@
-"""Reversible tokenization vault — future milestone.
+"""Reversible tokenization vault.
 
-Will hold the deterministic, HMAC-keyed token store that powers
-"rehydration": PII leaves as consistent self-describing tokens
-([PII:NAME:a1b2c3d4]) and real values are restored only at trusted sinks
-that hold the vault key. Planned tiers: in-memory → Redis (TTL) → Postgres.
+PII leaves as consistent, self-describing tokens ([PERSON_NAME_1],
+[PHONE_2]) and the real values are restored only by ``rehydrate()`` at a
+trusted sink that holds the vault key. See docs/vault.md.
 """
+
+from mcp_kavach.vault.store import DEFAULT_SCOPE, Vault, VaultError, default_vault_path, rehydrate
+
+__all__ = ["DEFAULT_SCOPE", "Vault", "VaultError", "default_vault_path", "rehydrate"]

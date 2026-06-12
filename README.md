@@ -232,11 +232,15 @@ rules:
     action: redact                   # structural rule — zero text scanning
 ```
 
-Actions `allow | partial_mask | mask | redact | block`, first-match-wins,
-`scope: result` refuses a whole payload. Seven shipped presets: `personal`
-(plugin default), `ngo-default`, `strict`, `dev`, plus draft regulation packs
-`dpdp`, `gdpr`, `hipaa-lite` ([docs/policy-packs.md](docs/policy-packs.md)).
-Reference: [docs/policy-schema.md](docs/policy-schema.md).
+Actions `allow | partial_mask | mask | tokenize | redact | block`,
+first-match-wins, `scope: result` refuses a whole payload. Seven shipped
+presets: `personal` (plugin default), `ngo-default`, `strict`, `dev`, plus
+draft regulation packs `dpdp`, `gdpr`, `hipaa-lite`
+([docs/policy-packs.md](docs/policy-packs.md)).
+Reference: [docs/policy-schema.md](docs/policy-schema.md). `tokenize` swaps a
+value for a stable, locally-reversible `[PERSON_NAME_1]` token so the same
+person stays the same person across rows — see [docs/vault.md](docs/vault.md)
+and `kavach rehydrate`.
 
 ## 🧾 Audit you can show your auditor
 
