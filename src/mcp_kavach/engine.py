@@ -18,6 +18,7 @@ from typing import Any, Literal
 from mcp_kavach.audit import AuditSink, hmac_value
 from mcp_kavach.detectors import ALL_DETECTORS, STRUCTURAL_DETECTORS, Detector
 from mcp_kavach.detectors.base import StructuralDetector
+from mcp_kavach.detectors.normalize import normalize_digits
 from mcp_kavach.models import Action, AuditEvent, Finding, GuardrailResult, PathTuple, Span
 from mcp_kavach.pathmatch import CompiledPath, compile_path, render_path
 from mcp_kavach.policy.schema import Policy, Rule
@@ -111,8 +112,12 @@ class Engine:
 
             # Tier 0: structural detectors (column-name heuristics).
             spans = [s for d in self._structural for s in d.detect_node(path, value)]
-            # Tier 1: regex detectors over the leaf text.
-            spans += [s for d in self._detectors for s in d.detect(text)]
+            # Tier 1: regex detectors over the leaf text. Unicode digits are
+            # normalized to ASCII first — a 1:1, length-preserving mapping, so
+            # the spans index correctly into the original `text`, which is
+            # what the transformer rewrites (and the audit HMAC hashes).
+            ascii_text = normalize_digits(text)
+            spans += [s for d in self._detectors for s in d.detect(ascii_text)]
 
             for span in spans:
                 if span.confidence < self.policy.defaults.min_confidence:

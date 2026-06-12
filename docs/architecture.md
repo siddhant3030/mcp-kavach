@@ -82,13 +82,20 @@ detector matched.
    text is read at all. A `block` rule with `scope: result` is the emergency
    brake: it refuses the entire payload and stops the scan immediately.
 3. **Tier 0 — structural detectors.** `ColumnNameDetector` flags whole values
-   by the field name holding them (`aadhaar`, `father_name`, …). Until the NER
-   tier exists, this is the only way free-text names and addresses get caught.
-4. **Tier 1 — regex detectors.** Each compiled pattern runs over every string
-   leaf (numeric leaves are stringified and, if matched, treated as wholly
-   sensitive). Entities with checksums — Aadhaar (Verhoeff), cards (Luhn) —
-   reject false candidates in `validate()`: a random 12-digit number does not
-   survive.
+   by the field name holding them (`aadhaar`, `father_name`, …) — including
+   Hindi/Hinglish field names (`नाम`, `फ़ोन`, `पता`, `naam`, `khata_no`, …).
+   Until the NER tier exists, this is the only way free-text names and
+   addresses get caught.
+4. **Tier 1 — regex detectors.** Each leaf's text is first digit-normalized:
+   every Unicode decimal digit (Devanagari ९, Bengali ৯, …) maps 1:1 to its
+   ASCII twin, so the mapping is length-preserving and spans found on the
+   normalized copy index correctly into the original string — which is what
+   the transformer rewrites, keeping the original script outside (and, for
+   partial masks, inside) the match. Each compiled pattern then runs over
+   the normalized text (numeric leaves are stringified and, if matched,
+   treated as wholly sensitive). Entities with checksums — Aadhaar
+   (Verhoeff), cards (Luhn) — reject false candidates in `validate()` on the
+   normalized ASCII digits: a random 12-digit number does not survive.
 5. **Resolve.** Every span gets exactly one action, by precedence: a pinned
    structural rule wins; otherwise the first policy rule (in file order) listing
    that entity; otherwise the policy's `defaults.unknown_entity_action`. Spans
