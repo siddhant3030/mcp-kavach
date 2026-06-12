@@ -38,8 +38,28 @@ def main(argv: list[str] | None = None) -> int:
     proxy_p.add_argument(
         "--scan-arguments", action="store_true", help="also scrub tool arguments"
     )
-    proxy_p.add_argument("--audit", help="append hash-only audit events to this JSONL file")
+    proxy_p.add_argument(
+        "--audit",
+        help="write hash-only audit events here: a .jsonl path, "
+        "a .db/.sqlite path, or a postgres:// URL",
+    )
     proxy_p.add_argument("--name", default="kavach-proxy")
+
+    audit_p = sub.add_parser("audit", help="inspect the hash-only audit log")
+    audit_sub = audit_p.add_subparsers(dest="audit_command", required=True)
+    source_help = (
+        "audit source: a .jsonl path, a .db/.sqlite path, or a postgres:// URL "
+        "(default: where the hooks write)"
+    )
+    report_p = audit_sub.add_parser(
+        "report", help="per-entity / per-action / per-tool aggregates"
+    )
+    report_p.add_argument("--since", help="ISO date or datetime (naive = UTC)")
+    report_p.add_argument("--until", help="ISO date or datetime (naive = UTC)")
+    report_p.add_argument("--policy", help="only events recorded under this policy name")
+    report_p.add_argument("--source", help=source_help)
+    tail_p = audit_sub.add_parser("tail", help="stream new audit events as they land")
+    tail_p.add_argument("--source", help=source_help)
 
     sub.add_parser("version", help="print version")
 
@@ -50,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
         return _scan(args)
     if args.command == "proxy":
         return _proxy(args)
+    if args.command == "audit":
+        return _audit(args)
     from mcp_kavach import __version__
 
     print(f"mcp-kavach {__version__}")
@@ -87,6 +109,14 @@ def _scan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _audit(args: argparse.Namespace) -> int:
+    from mcp_kavach.cli.audit import run_report, run_tail
+
+    if args.audit_command == "report":
+        return run_report(args.source, args.since, args.until, args.policy)
+    return run_tail(args.source)
+
+
 def _proxy(args: argparse.Namespace) -> int:
     import logging
 
@@ -94,7 +124,7 @@ def _proxy(args: argparse.Namespace) -> int:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
     from mcp_kavach.adapters.proxy import build_proxy
-    from mcp_kavach.audit import JsonlSink
+    from mcp_kavach.audit import open_sink
     from mcp_kavach.hooks.config import resolve_policy
     from mcp_kavach.hooks.runner import hmac_salt
 
@@ -105,7 +135,7 @@ def _proxy(args: argparse.Namespace) -> int:
         config,
         resolve_policy(args.policy),
         scan_arguments=args.scan_arguments,
-        sink=JsonlSink(args.audit) if args.audit else None,
+        sink=open_sink(args.audit) if args.audit else None,
         hmac_salt=hmac_salt(),
         name=args.name,
     )

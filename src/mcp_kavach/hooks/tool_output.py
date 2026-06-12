@@ -3,9 +3,7 @@ detects, audits, and tells the user how to actually mask (kavach proxy)."""
 
 from __future__ import annotations
 
-from mcp_kavach.audit import JsonlSink
-from mcp_kavach.hooks.config import load_config, load_engine
-from mcp_kavach.hooks.runner import data_dir
+from mcp_kavach.hooks.config import audit_sink, load_config, load_engine
 from mcp_kavach.hooks.summary import summarize_events
 
 
@@ -19,7 +17,7 @@ def handle(data: dict) -> dict | None:
         return None
     payload = response if isinstance(response, (dict, list, str)) else str(response)
 
-    engine = load_engine(cfg, sink=JsonlSink(data_dir() / "audit.jsonl"))
+    engine = load_engine(cfg, sink=audit_sink(cfg))
     result = engine.scan_result(tool, payload)
     if not result.modified:
         return None

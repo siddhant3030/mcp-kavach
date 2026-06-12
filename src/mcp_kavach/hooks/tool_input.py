@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import fnmatch
 
-from mcp_kavach.audit import JsonlSink
-from mcp_kavach.hooks.config import load_config, load_engine
-from mcp_kavach.hooks.runner import data_dir
+from mcp_kavach.hooks.config import audit_sink, load_config, load_engine
 from mcp_kavach.hooks.summary import summarize_events
 
 
@@ -33,7 +31,7 @@ def handle(data: dict) -> dict | None:
     if not isinstance(tool_input, (dict, list, str)) or not tool_input:
         return None
 
-    engine = load_engine(cfg, sink=JsonlSink(data_dir() / "audit.jsonl"))
+    engine = load_engine(cfg, sink=audit_sink(cfg))
     result = engine.scan_request(tool or "unknown", tool_input)
     if not result.modified:
         return None

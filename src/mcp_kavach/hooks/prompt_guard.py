@@ -10,10 +10,8 @@ from __future__ import annotations
 import hashlib
 import json
 
-from mcp_kavach.audit import JsonlSink
 from mcp_kavach.hooks import state
-from mcp_kavach.hooks.config import load_config, load_engine
-from mcp_kavach.hooks.runner import data_dir
+from mcp_kavach.hooks.config import audit_sink, load_config, load_engine
 from mcp_kavach.hooks.summary import summarize_events
 
 
@@ -25,7 +23,7 @@ def handle(data: dict) -> dict | None:
     if not isinstance(prompt, str) or not prompt.strip():
         return None
 
-    engine = load_engine(cfg, sink=JsonlSink(data_dir() / "audit.jsonl"))
+    engine = load_engine(cfg, sink=audit_sink(cfg))
     result = engine.scan_request("UserPromptSubmit", prompt)
     if not result.modified:
         return None
