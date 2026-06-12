@@ -13,6 +13,7 @@ from mcp_kavach.detectors.entities import (
     IpAddressDetector,
     PanDetector,
 )
+from mcp_kavach.detectors.ner import NER_ENTITY_TYPES
 from mcp_kavach.detectors.secrets import (
     AwsAccessKeyDetector,
     GithubTokenDetector,
@@ -38,7 +39,9 @@ STRUCTURAL_DETECTORS: list[StructuralDetector] = [ColumnNameDetector()]
 
 
 def known_entity_types() -> frozenset[str]:
-    types = {d.entity_type for d in ALL_DETECTORS}
+    # NER entities are always policy-addressable, even without the [ner]
+    # extra installed — the rules just never fire.
+    types = {d.entity_type for d in ALL_DETECTORS} | NER_ENTITY_TYPES
     for s in STRUCTURAL_DETECTORS:
         types |= s.entity_types()
     return frozenset(types)

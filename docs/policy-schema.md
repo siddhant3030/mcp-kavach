@@ -10,6 +10,7 @@ version: 1                 # optional, recorded in audit events via policy name
 defaults:
   unknown_entity_action: mask   # action for detected entities no rule covers
   min_confidence: 0.4           # findings below this confidence are dropped
+  ner: auto                     # NER tier ([ner] extra): auto | true | false
 rules:
   - id: contact-partial         # required, unique
     entities: [EMAIL, PHONE]    # entity types this rule acts on
@@ -41,6 +42,10 @@ rules:
 - A rule must have `entities`, `match`, or both. `match` rules pin their action with
   confidence 1.0 and no text scanning.
 - `scope: result` is only valid with `action: block`.
+- `defaults.ner` gates the optional NER tier: `auto` (default) loads it only when
+  the policy acts on entities tiers 0–1 can't find in free text (`PERSON_NAME`,
+  `ADDRESS`, `UPI_ID`); `true` always loads it when installed; `false` never.
+  Without the `[ner]` extra the setting is inert.
 
 ## Actions
 

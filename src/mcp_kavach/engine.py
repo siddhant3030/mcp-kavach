@@ -18,6 +18,7 @@ from typing import Any, Literal
 from mcp_kavach.audit import AuditSink, hmac_value
 from mcp_kavach.detectors import ALL_DETECTORS, STRUCTURAL_DETECTORS, Detector
 from mcp_kavach.detectors.base import StructuralDetector
+from mcp_kavach.detectors.ner import NER_ENTITY_TYPES, NER_ONLY_ENTITY_TYPES
 from mcp_kavach.detectors.normalize import normalize_digits
 from mcp_kavach.models import Action, AuditEvent, Finding, GuardrailResult, PathTuple, Span
 from mcp_kavach.pathmatch import CompiledPath, compile_path, render_path
@@ -67,6 +68,9 @@ class Engine:
             self._covered_structural_entities = covered
         else:
             self._covered_structural_entities = None
+        self._ner_entities = self._ner_wanted()
+        self._ner: Detector | None = None
+        self._ner_loaded = False
 
     # -- public API ---------------------------------------------------------
 
@@ -121,6 +125,12 @@ class Engine:
             # what the transformer rewrites (and the audit HMAC hashes).
             ascii_text = normalize_digits(text)
             spans += [s for d in self._detectors for s in d.detect(ascii_text)]
+            # Tier 2: NER over free text — no-op unless the [ner] extra is
+            # installed and the policy needs it (see _ner_wanted). Sees the
+            # same digit-normalized copy so its context recognizers match
+            # Indic-script numbers; offsets stay valid (length-preserving).
+            if isinstance(value, str):
+                spans += self._ner_spans(ascii_text)
 
             for span in spans:
                 if span.confidence < self.policy.defaults.min_confidence:
@@ -148,6 +158,32 @@ class Engine:
         for event in events:
             self._emit(event)
         return GuardrailResult(payload=new_payload, events=events)
+
+    def _ner_wanted(self) -> frozenset[str]:
+        """Entities the NER tier should look for; empty disables the tier.
+
+        Mirrors the detector pruning above: in allow-mode only entities the
+        policy acts on are kept. With defaults.ner: auto, the tier stays off
+        unless that leaves an entity tiers 0-1 can't find in free text.
+        """
+        mode = self.policy.defaults.ner
+        if mode is False:
+            return frozenset()
+        wanted = NER_ENTITY_TYPES
+        if self._covered_structural_entities is not None:
+            wanted &= self._covered_structural_entities
+        if mode == "auto" and not wanted & NER_ONLY_ENTITY_TYPES:
+            return frozenset()
+        return frozenset(wanted)
+
+    def _ner_spans(self, text: str) -> list[Span]:
+        if not self._ner_loaded:
+            self._ner_loaded = True  # one load attempt per engine
+            if self._ner_entities:
+                from mcp_kavach.detectors.ner import load_ner_detector
+
+                self._ner = load_ner_detector(self._ner_entities)
+        return self._ner.detect(text) if self._ner is not None else []
 
     def _match_path_rule(self, tool: str, path: PathTuple) -> Rule | None:
         from mcp_kavach.pathmatch import matches

@@ -26,9 +26,10 @@ dependencies = [
 kavach = "mcp_kavach.cli.main:main"
 
 [project.optional-dependencies]
-# Reserved extras stay empty so the roadmap is visible in metadata.
+# Reserved extras (llm, otel) stay empty so the roadmap is visible in metadata.
 # All dependencies must be permissively-licensed open source (see CONTRIBUTING.md).
-ner = []
+# The [ner] extra also needs a spaCy model: python -m spacy download en_core_web_sm
+ner = ["presidio-analyzer>=2.2,<3", "spacy>=3.7,<4"]
 llm = []
 otel = []
 proxy = ["fastmcp>=3,<4"]

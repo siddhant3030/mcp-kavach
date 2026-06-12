@@ -46,10 +46,10 @@ and asks first.
             ◀── │  (rules,     T0 structural   partial/block) │ ◀──
                 │  defaults)   T1 regex            │          │
                 │              T2 NER*             ▼          │
-                │              T3 LLM*        Audit events    │
+                │              T3 LLM†        Audit events    │
                 │                             (hash-only)     │
                 └─────────────────────────────────────────────┘
-                          * planned, behind extras
+                  * opt-in, behind the [ner] extra   † planned
 ```
 
 ## 🚀 Quick start: Claude Code in 60 seconds
@@ -195,6 +195,7 @@ URL-based upstreams.
 | IFSC 🇮🇳 | format |
 | AWS / GitHub / JWT secrets | anchored formats |
 | PERSON_NAME, ADDRESS, DOB, BANK_ACCOUNT, GOVT_ID | column-name heuristics (structured data, incl. Hindi: नाम, फ़ोन, पता, आधार, जन्मतिथि, खाता + romanizations) |
+| PERSON_NAME, ADDRESS in *free text* + UPI_ID 🇮🇳 | NER tier — optional `[ner]` extra |
 
 Digits in any script count — ९८७६५४३२१० is still a phone number. Unicode
 decimal digits (Devanagari, Bengali, Tamil, Arabic-Indic, …) are normalized to
@@ -212,6 +213,19 @@ ENTITY           ACTION        RULE                     TIER CONF
 PHONE            partial_mask  contact-partial          1    0.90
 EMAIL            partial_mask  contact-partial          1    0.95
 ```
+
+Names and addresses *inside free text* need the NER tier (Presidio + spaCy,
+fully local, India-tuned recognizers — see
+[docs/architecture.md](docs/architecture.md#the-ner-tier-ner-extra)):
+
+```bash
+uv tool install 'mcp-kavach[ner]'        # or: pip install 'mcp-kavach[ner]'
+python -m spacy download en_core_web_sm
+```
+
+Without the extra the engine runs exactly as before — NER confidence is always
+capped below a checksum-validated match, and `defaults.ner: false` turns the
+tier off per policy.
 
 ## 📜 Policies are YAML, not code
 
@@ -262,9 +276,10 @@ self-hosted, no vendor vault, no SaaS calls, every dependency permissive OSS.
 
 ## ⚠️ Honest limitations (v0.2)
 
-- **No NER yet** — free-text names/addresses are caught only via column-name
-  heuristics; a name inside a paragraph gets through. India-tuned NER is the
-  next milestone. Don't let regex create false confidence.
+- **NER is opt-in** — without the `[ner]` extra, free-text names/addresses
+  are caught only via column-name heuristics; a name inside a paragraph gets
+  through. With it, detection is English-model based (multilingual is on the
+  roadmap) and statistical — don't let either tier create false confidence.
 - Prompt guard can't *rewrite* prompts (Claude Code hook limitation) — it
   blocks and hands you the masked copy.
 - Tool-output hook can't *unsend* — it warns; true masking needs the proxy.
@@ -309,7 +324,7 @@ detectors for more ID systems and an India-tuned NER pack:
 
 ## 🧭 Roadmap
 
-- [ ] **NER tier** — Presidio + India-tuned recognizers
+- [x] **NER tier** — Presidio + India-tuned recognizers (`[ner]` extra)
 - [ ] **Reversible tokenization vault** with rehydration at trusted sinks
 - [ ] **SQLite/Postgres audit sinks** + `kavach audit` CLI
 - [x] **Policy packs** — DPDP, GDPR, HIPAA-lite (draft, pending legal mapping in #15)

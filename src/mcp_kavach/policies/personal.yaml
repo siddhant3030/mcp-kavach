@@ -4,7 +4,8 @@
 #
 # Note: PERSON_NAME/ADDRESS/DOB detection comes from column-name heuristics
 # (Tier 0), which never fire on free text — a name typed in a prompt is NOT
-# caught by this policy (NER tier is on the roadmap).
+# caught by this policy. To catch it, install the [ner] extra and add a
+# PERSON_NAME rule; the NER tier only loads for entities a rule here acts on.
 name: personal
 version: 1
 defaults:

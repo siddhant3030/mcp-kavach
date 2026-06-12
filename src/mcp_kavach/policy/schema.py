@@ -52,6 +52,10 @@ class Defaults(BaseModel):
     # Fail closed: entities no rule covers still get masked.
     unknown_entity_action: Action = Action.MASK
     min_confidence: float = 0.4
+    # NER tier (requires the [ner] extra). "auto" loads it only when the
+    # policy needs entities tiers 0-1 can't find in free text; true always
+    # loads it; false never does. A missing extra silently disables it.
+    ner: bool | Literal["auto"] = "auto"
 
 
 class Policy(BaseModel):
