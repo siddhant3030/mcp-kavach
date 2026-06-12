@@ -20,3 +20,12 @@ jobs:
       - run: uv sync --dev
       - run: uv run ruff check .
       - run: uv run pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
