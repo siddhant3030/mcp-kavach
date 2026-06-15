@@ -49,6 +49,18 @@ def main(argv: list[str] | None = None) -> int:
         help="write hash-only audit events here: a .jsonl path, "
         "a .db/.sqlite path, or a postgres:// URL",
     )
+    proxy_p.add_argument(
+        "--monitor",
+        action="store_true",
+        help="emit one flow event per payload (clean ones too) so "
+        "`kavach monitor` can show all traffic",
+    )
+    proxy_p.add_argument(
+        "--monitor-payloads",
+        choices=["masked"],
+        help="store the post-masking payload (what the model saw) on flow "
+        "events — never the original",
+    )
     proxy_p.add_argument("--name", default="kavach-proxy")
     proxy_p.add_argument(
         "--vault", nargs="?", const="", metavar="PATH",
@@ -86,6 +98,20 @@ def main(argv: list[str] | None = None) -> int:
     tail_p = audit_sub.add_parser("tail", help="stream new audit events as they land")
     tail_p.add_argument("--source", help=source_help)
 
+    monitor_p = sub.add_parser(
+        "monitor",
+        help="live traffic view: every payload headed toward the model, "
+        "clean ones included (needs monitor: true / --monitor)",
+    )
+    monitor_p.add_argument("--source", help=source_help)
+    monitor_p.add_argument(
+        "--summary-every",
+        type=int,
+        default=25,
+        metavar="N",
+        help="print a running summary every N payloads (0 = only on Ctrl-C)",
+    )
+
     sub.add_parser("version", help="print version")
 
     args = parser.parse_args(argv)
@@ -97,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
         return _proxy(args)
     if args.command == "audit":
         return _audit(args)
+    if args.command == "monitor":
+        from mcp_kavach.cli.audit import run_monitor
+
+        return run_monitor(args.source, args.summary_every)
     if args.command == "rehydrate":
         return _rehydrate(args)
     from mcp_kavach import __version__
@@ -169,14 +199,23 @@ def _proxy(args: argparse.Namespace) -> int:
     path = Path(args.config)
     text = path.read_text()
     config = yaml.safe_load(text) if path.suffix in (".yaml", ".yml") else json.loads(text)
+    # --monitor without --audit still needs somewhere to write flow events:
+    # fall back to the hooks' default destination so `kavach monitor` sees them.
+    audit_dest = args.audit
+    if args.monitor and not audit_dest:
+        from mcp_kavach.cli.audit import default_source
+
+        audit_dest = default_source()
     proxy = build_proxy(
         config,
         resolve_policy(args.policy),
         scan_arguments=args.scan_arguments,
-        sink=open_sink(args.audit) if args.audit else None,
+        sink=open_sink(audit_dest) if audit_dest else None,
         hmac_salt=hmac_salt(),
         name=args.name,
         vault=_open_vault(args),
+        monitor=args.monitor,
+        monitor_payloads=args.monitor_payloads,
     )
     proxy.run()
     return 0

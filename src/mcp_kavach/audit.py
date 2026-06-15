@@ -1,19 +1,24 @@
 """Audit sinks. Events never contain raw values — only hmac_value() ever
-touches plaintext, and it returns a salted HMAC."""
+touches plaintext, and it returns a salted HMAC. The one opt-in exception is
+FlowEvent.payload_masked, which holds the POST-masking payload (what the
+model actually saw), never the original."""
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
+import json
 import os
 import sqlite3
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from mcp_kavach.models import AuditEvent
+from mcp_kavach.models import AuditEvent, FlowEvent
 
-# Column order shared by the SQL sinks and the CLI readers.
-COLUMNS = (
+# Column order of the original detection-only schema. Logs written before
+# flow events existed have exactly these columns.
+LEGACY_COLUMNS = (
     "ts",
     "policy",
     "tool",
@@ -28,6 +33,18 @@ COLUMNS = (
     "span_end",
     "value_hmac",
 )
+
+# Columns added for flow events; appended so old rows/readers stay valid.
+FLOW_COLUMNS = (
+    "event_kind",
+    "payload_chars",
+    "leaf_count",
+    "findings_count",
+    "payload_masked",
+)
+
+# Column order shared by the SQL sinks and the CLI readers.
+COLUMNS = LEGACY_COLUMNS + FLOW_COLUMNS
 
 _CREATE_TABLE = """\
 CREATE TABLE IF NOT EXISTS audit_events (
@@ -44,8 +61,23 @@ CREATE TABLE IF NOT EXISTS audit_events (
     json_path TEXT NOT NULL,
     span_start INTEGER NOT NULL,
     span_end INTEGER NOT NULL,
-    value_hmac TEXT NOT NULL
+    value_hmac TEXT NOT NULL,
+    event_kind TEXT NOT NULL DEFAULT 'detection',
+    payload_chars INTEGER,
+    leaf_count INTEGER,
+    findings_count INTEGER,
+    payload_masked TEXT
 )"""
+
+# Idempotent column adds for tables created before flow events existed.
+# SQLite has no ADD COLUMN IF NOT EXISTS, so duplicates are caught instead.
+_MIGRATE_COLUMNS = (
+    ("event_kind", "TEXT NOT NULL DEFAULT 'detection'"),
+    ("payload_chars", "INTEGER"),
+    ("leaf_count", "INTEGER"),
+    ("findings_count", "INTEGER"),
+    ("payload_masked", "TEXT"),
+)
 
 _CREATE_INDEXES = tuple(
     f"CREATE INDEX IF NOT EXISTS idx_audit_{name} ON audit_events ({column})"
@@ -58,8 +90,31 @@ _CREATE_INDEXES = tuple(
 )
 
 
-def event_row(event: AuditEvent) -> tuple:
-    """Event as a tuple in COLUMNS order (timestamps as ISO-8601 text)."""
+def event_row(event: AuditEvent | FlowEvent) -> tuple:
+    """Event as a tuple in COLUMNS order (timestamps as ISO-8601 text).
+    Flow events fill the detection columns with neutral placeholders; their
+    actions land in the shared `action` column ("clean" when none)."""
+    if isinstance(event, FlowEvent):
+        return (
+            event.ts.isoformat(),
+            event.policy,
+            event.tool,
+            event.direction,
+            "",
+            0,
+            0.0,
+            None,
+            ",".join(event.actions) or "clean",
+            "",
+            0,
+            0,
+            "",
+            "flow",
+            event.payload_chars,
+            event.leaf_count,
+            event.findings_count,
+            event.payload_masked,
+        )
     return (
         event.ts.isoformat(),
         event.policy,
@@ -74,27 +129,57 @@ def event_row(event: AuditEvent) -> tuple:
         event.start,
         event.end,
         event.value_hmac,
+        "detection",
+        None,
+        None,
+        None,
+        None,
     )
 
 
-def event_from_row(row: tuple) -> AuditEvent:
-    """Inverse of event_row(); pydantic coerces the ISO timestamp and action."""
+def event_from_row(row: tuple) -> AuditEvent | FlowEvent:
+    """Inverse of event_row(); pydantic coerces the ISO timestamp and action.
+    Accepts legacy 13-column rows (pre-flow logs) as detections."""
+    if len(row) == len(LEGACY_COLUMNS):
+        row = (*row, "detection", None, None, None, None)
     data = dict(zip(COLUMNS, row, strict=True))
+    if data["event_kind"] == "flow":
+        actions = data["action"]
+        return FlowEvent(
+            ts=data["ts"],
+            policy=data["policy"],
+            tool=data["tool"],
+            direction=data["direction"],
+            payload_chars=data["payload_chars"],
+            leaf_count=data["leaf_count"],
+            findings_count=data["findings_count"],
+            actions=() if actions == "clean" else tuple(actions.split(",")),
+            payload_masked=data["payload_masked"],
+        )
+    for key in FLOW_COLUMNS:
+        del data[key]
     data["start"] = data.pop("span_start")
     data["end"] = data.pop("span_end")
     return AuditEvent(**data)
 
 
+def event_from_json(line: str) -> AuditEvent | FlowEvent:
+    """Parse one JSONL line; lines without event_kind are detections."""
+    data = json.loads(line)
+    cls = FlowEvent if data.get("event_kind") == "flow" else AuditEvent
+    return cls.model_validate(data)
+
+
 @runtime_checkable
 class AuditSink(Protocol):
-    def emit(self, event: AuditEvent) -> None: ...
+    def emit(self, event: AuditEvent | FlowEvent) -> None: ...
 
 
 class InMemorySink:
     def __init__(self) -> None:
-        self.events: list[AuditEvent] = []
+        self.events: list[AuditEvent | FlowEvent] = []
 
-    def emit(self, event: AuditEvent) -> None:
+    def emit(self, event: AuditEvent | FlowEvent) -> None:
         self.events.append(event)
 
 
@@ -106,7 +191,7 @@ class JsonlSink:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    def emit(self, event: AuditEvent) -> None:
+    def emit(self, event: AuditEvent | FlowEvent) -> None:
         line = event.model_dump_json() + "\n"
         fd = os.open(self.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         try:
@@ -125,11 +210,14 @@ class SqliteSink:
         self._conn = sqlite3.connect(self.path, timeout=5)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_CREATE_TABLE.format(pk="INTEGER PRIMARY KEY AUTOINCREMENT"))
+        for name, spec in _MIGRATE_COLUMNS:  # pre-flow tables gain the new columns
+            with contextlib.suppress(sqlite3.OperationalError):  # duplicate column
+                self._conn.execute(f"ALTER TABLE audit_events ADD COLUMN {name} {spec}")
         for stmt in _CREATE_INDEXES:
             self._conn.execute(stmt)
         self._conn.commit()
 
-    def emit(self, event: AuditEvent) -> None:
+    def emit(self, event: AuditEvent | FlowEvent) -> None:
         placeholders = ", ".join("?" * len(COLUMNS))
         self._conn.execute(
             f"INSERT INTO audit_events ({', '.join(COLUMNS)}) VALUES ({placeholders})",
@@ -155,10 +243,12 @@ class PostgresSink:
         self._conn = psycopg.connect(dsn, autocommit=True)
         with self._conn.cursor() as cur:
             cur.execute(_CREATE_TABLE.format(pk="BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"))
+            for name, spec in _MIGRATE_COLUMNS:
+                cur.execute(f"ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS {name} {spec}")
             for stmt in _CREATE_INDEXES:
                 cur.execute(stmt)
 
-    def emit(self, event: AuditEvent) -> None:
+    def emit(self, event: AuditEvent | FlowEvent) -> None:
         placeholders = ", ".join(["%s"] * len(COLUMNS))
         with self._conn.cursor() as cur:
             cur.execute(

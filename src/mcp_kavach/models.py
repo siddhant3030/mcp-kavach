@@ -68,6 +68,7 @@ class AuditEvent(BaseModel):
     only a salted HMAC, so the log is safe to show to anyone who can see
     the redacted output."""
 
+    event_kind: Literal["detection"] = "detection"
     ts: datetime
     policy: str
     tool: str
@@ -81,6 +82,31 @@ class AuditEvent(BaseModel):
     start: int
     end: int
     value_hmac: str
+
+
+class FlowEvent(BaseModel):
+    """One event per payload crossing toward the model — emitted (opt-in)
+    whether or not anything was detected, so the log answers "what has the
+    model been seeing?" and not just "what did we catch?".
+
+    `payload_masked` is only set when masked-payload capture is enabled and
+    only ever holds the POST-transform payload — exactly what the model saw,
+    never the original. A blocked payload stores only the block marker."""
+
+    event_kind: Literal["flow"] = "flow"
+    ts: datetime
+    policy: str
+    tool: str
+    direction: Literal["prompt", "tool_input", "tool_output"]
+    payload_chars: int
+    leaf_count: int
+    findings_count: int
+    actions: tuple[str, ...] = ()  # unique actions applied; empty = clean
+    payload_masked: str | None = None
+
+    @property
+    def clean(self) -> bool:
+        return self.findings_count == 0
 
 
 @dataclass

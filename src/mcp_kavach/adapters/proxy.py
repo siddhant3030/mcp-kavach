@@ -26,6 +26,8 @@ def build_proxy(
     hmac_salt: bytes | None = None,
     name: str = "kavach-proxy",
     vault: TokenVault | None = None,
+    monitor: bool = False,
+    monitor_payloads: str | None = None,
 ):
     """upstream: an ``{"mcpServers": {...}}`` dict (Claude .mcp.json shape),
     a bare ``{name: spec}`` mapping, or a FastMCP instance (tests)."""
@@ -41,6 +43,13 @@ def build_proxy(
     if isinstance(upstream, dict) and "mcpServers" not in upstream:
         target = {"mcpServers": upstream}
     proxy = create_proxy(target, name=name)
-    engine = Engine(policy, sink=sink, hmac_salt=hmac_salt, vault=vault)
+    engine = Engine(
+        policy,
+        sink=sink,
+        hmac_salt=hmac_salt,
+        vault=vault,
+        monitor=monitor,
+        monitor_payloads=monitor_payloads,
+    )
     proxy.add_middleware(KavachMiddleware(engine, scan_arguments=scan_arguments))
     return proxy

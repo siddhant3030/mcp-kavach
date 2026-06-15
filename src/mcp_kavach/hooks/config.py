@@ -29,6 +29,10 @@ class HookConfig:
     # Audit destination: a .jsonl path (default), a .db/.sqlite path, or a
     # postgres:// URL. Empty means $KAVACH_DATA_DIR/audit.jsonl.
     audit: str = ""
+    # Traffic monitoring: one flow event per scanned payload (clean ones too).
+    monitor: bool = False
+    # "masked" stores the post-masking payload on flow events; "" stores none.
+    monitor_payloads: str = ""
 
 
 def load_config() -> HookConfig:
@@ -44,6 +48,8 @@ def load_config() -> HookConfig:
                 "tool_output_guard",
                 "confirm_window_seconds",
                 "audit",
+                "monitor",
+                "monitor_payloads",
             ):
                 if key in data:
                     setattr(cfg, key, data[key])
@@ -62,6 +68,12 @@ def load_config() -> HookConfig:
     if env.get("KAVACH_CONFIRM_WINDOW"):
         cfg.confirm_window_seconds = int(env["KAVACH_CONFIRM_WINDOW"])
     cfg.audit = env.get("KAVACH_AUDIT", cfg.audit)
+    if env.get("KAVACH_MONITOR"):
+        cfg.monitor = env["KAVACH_MONITOR"].lower() in ("1", "true", "yes", "on")
+    cfg.monitor_payloads = env.get("KAVACH_MONITOR_PAYLOADS", cfg.monitor_payloads)
+    cfg.monitor = bool(cfg.monitor)
+    if cfg.monitor_payloads not in ("", "masked"):
+        cfg.monitor_payloads = ""  # plaintext capture is not a thing; ignore unknowns
     return cfg
 
 
@@ -79,4 +91,10 @@ def audit_sink(cfg: HookConfig) -> AuditSink:
 
 
 def load_engine(cfg: HookConfig, *, sink: AuditSink | None = None) -> Engine:
-    return Engine(resolve_policy(cfg.policy), sink=sink, hmac_salt=hmac_salt())
+    return Engine(
+        resolve_policy(cfg.policy),
+        sink=sink,
+        hmac_salt=hmac_salt(),
+        monitor=cfg.monitor,
+        monitor_payloads=cfg.monitor_payloads or None,
+    )

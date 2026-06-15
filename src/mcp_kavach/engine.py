@@ -8,6 +8,7 @@ adapter only needs to call scan_request()/scan_result() around a tool call.
 from __future__ import annotations
 
 import fnmatch
+import json
 import logging
 import os
 import secrets as _secrets
@@ -20,7 +21,15 @@ from mcp_kavach.detectors import ALL_DETECTORS, STRUCTURAL_DETECTORS, Detector
 from mcp_kavach.detectors.base import StructuralDetector
 from mcp_kavach.detectors.ner import NER_ENTITY_TYPES, NER_ONLY_ENTITY_TYPES
 from mcp_kavach.detectors.normalize import normalize_digits
-from mcp_kavach.models import Action, AuditEvent, Finding, GuardrailResult, PathTuple, Span
+from mcp_kavach.models import (
+    Action,
+    AuditEvent,
+    Finding,
+    FlowEvent,
+    GuardrailResult,
+    PathTuple,
+    Span,
+)
 from mcp_kavach.pathmatch import CompiledPath, compile_path, render_path
 from mcp_kavach.policy.schema import Policy, Rule
 from mcp_kavach.transform import TokenVault, transform_text, transform_whole_value
@@ -40,10 +49,16 @@ class Engine:
         extra_detectors: Iterable[Detector] = (),
         extra_structural: Iterable[StructuralDetector] = (),
         vault: TokenVault | None = None,
+        monitor: bool = False,
+        monitor_payloads: Literal["masked"] | None = None,
     ) -> None:
+        if monitor_payloads not in (None, "masked"):
+            raise ValueError(f"monitor_payloads must be 'masked' or None, got {monitor_payloads!r}")
         self.policy = policy
         self.sink = sink
         self.vault = vault
+        self.monitor = monitor
+        self.monitor_payloads = monitor_payloads
         self._warned_no_vault = False
         salt = hmac_salt or os.environ.get("KAVACH_HMAC_SALT", "").encode() or None
         if salt is None:
@@ -104,7 +119,8 @@ class Engine:
             pinned = self._match_path_rule(tool, path)
             if pinned is not None:
                 if pinned.action is Action.BLOCK and pinned.scope == "result":
-                    return self._blocked(tool, direction, pinned, path, text, findings)
+                    blocked = self._blocked(tool, direction, pinned, path, text, findings)
+                    return self._flow(tool, direction, payload, blocked)
                 findings.append(
                     Finding(
                         span=Span(0, len(text), "STRUCTURAL", 1.0, 0, "policy_match"),
@@ -143,7 +159,8 @@ class Engine:
                     continue
                 action, rule = self._resolve(span.entity_type)
                 if action is Action.BLOCK and rule is not None and rule.scope == "result":
-                    return self._blocked(tool, direction, rule, path, text, findings, span)
+                    blocked = self._blocked(tool, direction, rule, path, text, findings, span)
+                    return self._flow(tool, direction, payload, blocked)
                 findings.append(
                     Finding(
                         span=span,
@@ -157,7 +174,8 @@ class Engine:
         new_payload = _rebuild(payload, (), _group(findings), self.policy.name, self.vault)
         for event in events:
             self._emit(event)
-        return GuardrailResult(payload=new_payload, events=events)
+        result = GuardrailResult(payload=new_payload, events=events)
+        return self._flow(tool, direction, payload, result)
 
     def _ner_wanted(self) -> frozenset[str]:
         """Entities the NER tier should look for; empty disables the tier.
@@ -270,6 +288,48 @@ class Engine:
             end=f.span.end,
             value_hmac=hmac_value(self._salt, text[f.span.start : f.span.end]),
         )
+
+    def _flow(
+        self,
+        tool: str,
+        direction: Literal["request", "result"],
+        payload: Any,
+        result: GuardrailResult,
+    ) -> GuardrailResult:
+        """Emit one flow event per scanned payload when monitoring is on.
+        With monitor_payloads="masked" it carries the POST-transform payload
+        (what actually crossed) — for a block, that is just the block marker."""
+        if not self.monitor or self.sink is None:
+            return result
+        leaf_count = chars = 0
+        for _, value in _walk(payload):
+            leaf_count += 1
+            if isinstance(value, _SCANNABLE) and not isinstance(value, bool):
+                chars += len(value if isinstance(value, str) else str(value))
+        masked = None
+        if self.monitor_payloads == "masked":
+            out = result.payload
+            if not isinstance(out, str):
+                out = json.dumps(out, ensure_ascii=False, default=str)
+            masked = out
+        self.sink.emit(
+            FlowEvent(
+                ts=datetime.now(timezone.utc),
+                policy=self.policy.name,
+                tool=tool,
+                direction=(
+                    "prompt"
+                    if tool == "UserPromptSubmit"
+                    else "tool_input" if direction == "request" else "tool_output"
+                ),
+                payload_chars=chars,
+                leaf_count=leaf_count,
+                findings_count=len(result.events),
+                actions=tuple(sorted({e.action.value for e in result.events})),
+                payload_masked=masked,
+            )
+        )
+        return result
 
     def _emit(self, event: AuditEvent) -> None:
         if self.sink is not None:
