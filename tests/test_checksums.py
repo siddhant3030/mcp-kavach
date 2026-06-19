@@ -1,4 +1,4 @@
-from mcp_kavach.detectors.checksums import luhn_valid, verhoeff_check_digit, verhoeff_valid
+from virelia.detectors.checksums import luhn_valid, verhoeff_check_digit, verhoeff_valid
 
 
 class TestVerhoeff:

@@ -1,9 +1,9 @@
-# Contributing to mcp-kavach
+# Contributing to virelia
 
 ## Development setup
 
 ```bash
-git clone <repo-url> && cd mcp-kavach
+git clone <repo-url> && cd virelia
 uv sync          # installs the package editable + dev tools
 uv run pytest    # full suite, including the golden corpus
 uv run ruff check .
@@ -20,11 +20,11 @@ Every aspect of this project must remain open source and self-hostable. Concrete
    detector tier must work with local models (Ollama/vLLM), never be hard-wired to a
    commercial API.
 3. **The base install stays light**: stdlib + pydantic + pyyaml. Anything heavier
-   (NER models, OTel, proxy server) goes behind an extra (`mcp-kavach[ner]`, …).
+   (NER models, OTel, proxy server) goes behind an extra (`virelia[ner]`, …).
 
 ## Adding a detector
 
-1. Subclass `RegexDetector` in `src/mcp_kavach/detectors/` (or `StructuralDetector`
+1. Subclass `RegexDetector` in `src/virelia/detectors/` (or `StructuralDetector`
    for Tier-0 path/key-based detection). Use checksum gates in `validate()` where the
    entity has one, and digit-boundary lookarounds on every numeric pattern.
 2. Register the instance in `detectors/__init__.py` (`ALL_DETECTORS` /
@@ -37,7 +37,7 @@ Every aspect of this project must remain open source and self-hostable. Concrete
 
 ## Adding or changing policy presets
 
-Presets live in `src/mcp_kavach/policies/` and ship as package data. Every preset must
+Presets live in `src/virelia/policies/` and ship as package data. Every preset must
 load cleanly in `tests/test_policy.py::TestPresets` and any new behavior needs an
 engine-level test.
 

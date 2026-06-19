@@ -3,7 +3,7 @@
 Use [vhs](https://github.com/charmbracelet/vhs) (`brew install vhs`). Two
 scenes; keep the total under 25 seconds — viewers decide in the first 10.
 
-## Scene 1 — `kavach scan` (terminal)
+## Scene 1 — `virelia scan` (terminal)
 
 `demo.tape`:
 
@@ -14,7 +14,7 @@ Set Width 1100
 Set Height 420
 Set Theme "Catppuccin Mocha"
 
-Type "kavach scan 'call Lakshmi at 9876543210, aadhaar 2345 6789 0124'"
+Type "virelia scan 'call Lakshmi at 9876543210, aadhaar 2345 6789 0124'"
 Sleep 800ms
 Enter
 Sleep 4s

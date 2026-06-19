@@ -17,7 +17,7 @@ hooks. But every one of them is either a centralized enterprise gateway,
 cloud-API-gated for its strongest protections, or focused on behavioral threats
 (prompt injection) rather than data minimization.
 
-kavach's defensible niche is the **fully-local, Apache-2.0, end-to-end stack**:
+virelia's defensible niche is the **fully-local, Apache-2.0, end-to-end stack**:
 India-specific checksum-validated detectors (absent from every competitor
 surveyed, including ContextForge's PIIFilterPlugin — zero code hits for
 luhn/aadhaar/verhoeff), tiered YAML policy actions, and a salted-HMAC audit log,
@@ -44,7 +44,7 @@ assert them.
 
 **The enforcement layer is right.** Four independent, funded teams arrived at
 MCP-traffic interception with pre/post hooks. ContextForge's plugin framework
-converged on the *exact* hook placement kavach uses — `prompt_pre/post_fetch`,
+converged on the *exact* hook placement virelia uses — `prompt_pre/post_fetch`,
 `tool_pre/post_invoke`, `resource_pre/post_fetch` — validating prompts, tool
 inputs, and tool outputs as the correct MCP-lifecycle enforcement points
 (implemented centrally there; client-side/local here).
@@ -65,7 +65,7 @@ cases per feature dimension — bank accounts labeled DATE/PERSON, UPI IDs label
 EMAIL — partly because **no entity label exists for Indian types like UPI IDs or
 vehicle registrations**. Caveats: non-peer-reviewed preprint, semi-synthetic
 data. Implication either way: a plain Presidio NER tier is not a differentiator
-(Lasso, LiteLLM, NeMo already wrap it) and is weak exactly where kavach's users
+(Lasso, LiteLLM, NeMo already wrap it) and is weak exactly where virelia's users
 need it. India-tuned recognizers are the point.
 
 ## Gap analysis — what's genuinely unserved
@@ -140,10 +140,10 @@ need it. India-tuned recognizers are the point.
 
 1. What do the notified DPDP Rules 2025 concretely require (breach
    notification, consent artifacts, audit trails, cross-border transfer), and
-   which kavach features map to which clauses?
+   which virelia features map to which clauses?
 2. Any signal that the MCP spec, Anthropic, or major MCP clients plan native
    guardrail/PII hooks?
-3. Actual precision/recall of kavach's checksum tier vs Presidio-with-custom-
+3. Actual precision/recall of virelia's checksum tier vs Presidio-with-custom-
    recognizers on Indian identifiers (= the #9/#10 benchmark).
 4. Demand-side validation: real-world appetite for local-first vs hosted MCP
    security among Indian NGOs / sovereignty-sensitive deployments (the Dalgo

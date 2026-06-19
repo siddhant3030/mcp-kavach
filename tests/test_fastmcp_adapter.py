@@ -8,7 +8,7 @@ import json
 import pytest
 from conftest import VALID_AADHAAR
 
-from mcp_kavach import Engine, load_preset
+from virelia import Engine, load_preset
 
 fastmcp = pytest.importorskip("fastmcp")
 
@@ -44,9 +44,9 @@ def make_engine(preset="ngo-default"):
 
 
 def with_middleware(server, engine, **kwargs):
-    from mcp_kavach.adapters.fastmcp_middleware import KavachMiddleware
+    from virelia.adapters.fastmcp_middleware import VireliaMiddleware
 
-    server.add_middleware(KavachMiddleware(engine, **kwargs))
+    server.add_middleware(VireliaMiddleware(engine, **kwargs))
     return server
 
 
@@ -85,7 +85,7 @@ class TestMiddleware:
 
 class TestProxy:
     def test_proxy_mirrors_tools_and_masks(self):
-        from mcp_kavach.adapters.proxy import build_proxy
+        from virelia.adapters.proxy import build_proxy
 
         proxy = build_proxy(make_upstream(), load_preset("ngo-default"), hmac_salt=b"t")
 
@@ -103,7 +103,7 @@ class TestProxy:
 
 class TestLazyImport:
     def test_missing_fastmcp_gives_actionable_error(self, monkeypatch):
-        import mcp_kavach.adapters.fastmcp_middleware as mod
+        import virelia.adapters.fastmcp_middleware as mod
 
         monkeypatch.setattr(mod, "_cached", None)
         real_import = builtins.__import__
@@ -114,6 +114,6 @@ class TestLazyImport:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match=r"mcp-kavach\[proxy\]"):
-            _ = mod.KavachMiddleware
+        with pytest.raises(ImportError, match=r"virelia\[proxy\]"):
+            _ = mod.VireliaMiddleware
         monkeypatch.setattr(mod, "_cached", None)

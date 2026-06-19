@@ -10,3 +10,6 @@ build/
 .coverage
 uv.lock
 .DS_Store
+
+# transient agent worktrees
+.claude/worktrees/

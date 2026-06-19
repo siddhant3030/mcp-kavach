@@ -5,11 +5,11 @@ import sys
 
 import pytest
 
-from mcp_kavach import Engine, parse_policy
-from mcp_kavach.cli.main import main
-from mcp_kavach.models import Action, Finding, Span
-from mcp_kavach.transform import merge_clusters
-from mcp_kavach.vault import Vault, rehydrate
+from virelia import Engine, parse_policy
+from virelia.cli.main import main
+from virelia.models import Action, Finding, Span
+from virelia.transform import merge_clusters
+from virelia.vault import Vault, rehydrate
 
 TOKENIZE_POLICY = {
     "name": "tok",
@@ -136,7 +136,7 @@ class TestRehydrateCli:
 class TestFailSafe:
     def test_tokenize_without_vault_falls_back_to_mask(self, caplog):
         engine = Engine(parse_policy(TOKENIZE_POLICY), hmac_salt=b"s")
-        with caplog.at_level(logging.WARNING, logger="mcp_kavach"):
+        with caplog.at_level(logging.WARNING, logger="virelia"):
             result = engine.scan_result("t", {"name": "Lakshmi Devi"})
         assert result.payload["name"] == "[MASKED:PERSON_NAME]"
         assert any("tokenize" in r.message for r in caplog.records)

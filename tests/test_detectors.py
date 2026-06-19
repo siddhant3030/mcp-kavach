@@ -1,6 +1,6 @@
 from conftest import INVALID_AADHAAR, VALID_AADHAAR
 
-from mcp_kavach.detectors.entities import (
+from virelia.detectors.entities import (
     AadhaarDetector,
     CreditCardDetector,
     EmailDetector,
@@ -9,12 +9,12 @@ from mcp_kavach.detectors.entities import (
     IpAddressDetector,
     PanDetector,
 )
-from mcp_kavach.detectors.secrets import (
+from virelia.detectors.secrets import (
     AwsAccessKeyDetector,
     GithubTokenDetector,
     JwtDetector,
 )
-from mcp_kavach.detectors.structural import ColumnNameDetector
+from virelia.detectors.structural import ColumnNameDetector
 
 
 def entities(detector, text):

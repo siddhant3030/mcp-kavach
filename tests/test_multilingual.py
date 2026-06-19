@@ -11,11 +11,11 @@ import unicodedata
 
 from conftest import INVALID_AADHAAR, VALID_AADHAAR
 
-from mcp_kavach.detectors.checksums import verhoeff_valid
-from mcp_kavach.detectors.entities import AadhaarDetector, IndianMobileDetector
-from mcp_kavach.detectors.normalize import normalize_digits
-from mcp_kavach.detectors.structural import ColumnNameDetector
-from mcp_kavach.models import Action
+from virelia.detectors.checksums import verhoeff_valid
+from virelia.detectors.entities import AadhaarDetector, IndianMobileDetector
+from virelia.detectors.normalize import normalize_digits
+from virelia.detectors.structural import ColumnNameDetector
+from virelia.models import Action
 
 _DEVANAGARI_ZERO = 0x0966  # ०
 

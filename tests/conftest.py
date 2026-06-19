@@ -1,6 +1,6 @@
 import pytest
 
-from mcp_kavach import Engine, load_preset
+from virelia import Engine, load_preset
 
 # Verhoeff-valid 12-digit numbers in Aadhaar format (synthetic, generated
 # with detectors.checksums.verhoeff_check_digit).

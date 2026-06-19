@@ -1,6 +1,6 @@
 # LLM-tool integration — June 2026
 
-> Deep-research report: how mcp-kavach plugs into the major coding/agent tools,
+> Deep-research report: how virelia plugs into the major coding/agent tools,
 > where each leaks, and whether one interception surface covers them all.
 > 5 angles, 23 sources, 101 claims extracted, 25 verified (**24 confirmed,
 > 1 killed**). Mid-2026 snapshot; per-tool capabilities are version-dependent
@@ -13,7 +13,7 @@
 **Yes — there is a universal interception surface, and it's two proxies, not nine plugins.**
 
 1. **Egress LLM-API proxy** on the `*_BASE_URL` / `HTTP(S)_PROXY` env vars covers **typed prompts** for nearly every tool at once.
-2. **Masking MCP proxy** (kavach already has this) covers **tool traffic** for every tool that speaks MCP.
+2. **Masking MCP proxy** (virelia already has this) covers **tool traffic** for every tool that speaks MCP.
 
 Together they deliver "one guard, both doors, *any* tool." The gap is real: **no major tool redacts PII/secrets before sending to the provider.** But the egress idea is **not greenfield** — at least three OSS projects already do egress redaction across these same tools, so the differentiator is the *unified engine*, not the surface.
 
@@ -24,13 +24,13 @@ A local proxy set via the base-URL / proxy env vars intercepts outbound LLM traf
 - **claude-tap** rewrites `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` / `ANTHROPIC_BEDROCK_BASE_URL` to `127.0.0.1` (reverse-proxy) or injects `HTTPS_PROXY`/`HTTP_PROXY` into the child (forward-proxy) — across Claude Code, Codex CLI, Gemini CLI, Cursor CLI, and more. (Tap only — redacts auth headers, *not* bodies — so it proves interception, not masking.)
 - **claude-code-redact**, **AegisGate**, **AI Security Gateway** independently implement the *same* base-URL pattern **with redaction**.
 
-**Reversible tokenization at the egress works** and preserves model coherence: claude-code-redact maps a value to a deterministic token (SHA-256), keeps the reverse map *in proxy memory only* (no disk), redacts before transmission, un-redacts the response locally. This is exactly kavach's vault concept, applied at the API egress instead of the MCP layer.
+**Reversible tokenization at the egress works** and preserves model coherence: claude-code-redact maps a value to a deterministic token (SHA-256), keeps the reverse map *in proxy memory only* (no disk), redacts before transmission, un-redacts the response locally. This is exactly virelia's vault concept, applied at the API egress instead of the MCP layer.
 
 > ⚠️ One overreach was **refuted 0-3**: that a base-URL proxy captures "everything" for Claude Code/OpenCode. It doesn't — coverage is broad but not total. Don't market it as capturing all traffic.
 
 ## Per-tool integration matrix
 
-| Tool | Speaks MCP | Hooks/plugins | Base-URL / proxy egress | Built-in PII redaction | kavach today |
+| Tool | Speaks MCP | Hooks/plugins | Base-URL / proxy egress | Built-in PII redaction | virelia today |
 |---|---|---|---|---|---|
 | **Claude Code** | ✅ | ✅ UserPromptSubmit/Pre/PostToolUse | ✅ `ANTHROPIC_BASE_URL` | ❌ | ✅ **plugin shipped** + MCP proxy |
 | **Codex CLI** | ✅ `[mcp_servers.*]` | ✅ Pre/PostToolUse (guardrail, not full boundary) | ✅ `openai_base_url` (needs `/v1`) | ❌ (only env-var/file exclusion) | ✅ MCP proxy today; hooks + egress = small build |
@@ -42,7 +42,7 @@ A local proxy set via the base-URL / proxy env vars intercepts outbound LLM traf
 
 (Cells marked "needs verification" were referenced through the multi-tool proxy support lists, not checked against each tool's own docs this pass — see open questions.)
 
-## The gap kavach addresses (real, and honest about limits)
+## The gap virelia addresses (real, and honest about limits)
 
 **No major tool redacts PII/secret content before sending to the provider** — confirmed for Cursor, Codex CLI, and Cline. What they offer instead:
 - Cursor: Privacy Mode (training/retention opt-out) + best-effort `.cursorignore`.
@@ -58,11 +58,11 @@ The egress-redaction proxy is **not** a novel idea — it's an emerging category
 - **AI Security Gateway** — OpenAI-SDK-compatible drop-in, Presidio 13 entity types + key/secret detectors, self-hosted Docker, streaming preserved. (~20★.)
 - **claude-code-redact** — reversible in-memory tokenization, Claude Code-focused.
 
-So this echoes the universal-positioning verdict: **individual capabilities exist; kavach's only defensible edge is the combination** — one Apache-2.0 engine, one policy language, one audit trail, one vault, applied across *all three* surfaces (Claude Code hooks + MCP proxy + egress API proxy). None of the above spans both the MCP tool-output layer and the prompt-egress layer with shared policy/audit/reversible-vault.
+So this echoes the universal-positioning verdict: **individual capabilities exist; virelia's only defensible edge is the combination** — one Apache-2.0 engine, one policy language, one audit trail, one vault, applied across *all three* surfaces (Claude Code hooks + MCP proxy + egress API proxy). None of the above spans both the MCP tool-output layer and the prompt-egress layer with shared policy/audit/reversible-vault.
 
 ## Concrete integration plan
 
-**Surface 1 — egress LLM-API proxy (NEW build).** A `kavach gateway` that speaks OpenAI `/v1` and Anthropic `/v1/messages`, runs the existing engine on request bodies (redact/tokenize) and un-redacts responses from the in-memory vault. Users point any tool at it via `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` / `HTTP_PROXY`. This single component delivers typed-prompt coverage for Codex, Cline, Continue, Gemini CLI, and more — reusing the engine, policies, and vault already built.
+**Surface 1 — egress LLM-API proxy (NEW build).** A `virelia gateway` that speaks OpenAI `/v1` and Anthropic `/v1/messages`, runs the existing engine on request bodies (redact/tokenize) and un-redacts responses from the in-memory vault. Users point any tool at it via `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` / `HTTP_PROXY`. This single component delivers typed-prompt coverage for Codex, Cline, Continue, Gemini CLI, and more — reusing the engine, policies, and vault already built.
 
 **Surface 2 — MCP masking proxy (SHIPPED).** Already wraps any MCP server; document registering it in Codex's `[mcp_servers.*]`, Cline, Continue, etc., not just Claude Code.
 
@@ -79,7 +79,7 @@ So this echoes the universal-positioning verdict: **individual capabilities exis
 
 ## Open questions
 1. Concrete per-tool keys for **Gemini CLI, Aider, Windsurf** (MCP? base-URL? hooks?) — inferred from multi-tool proxy lists, not individually verified.
-2. Does **Cursor** expose a real configurable base URL, or only its own backend relay? Are MCP/hooks a cleaner kavach surface there?
+2. Does **Cursor** expose a real configurable base URL, or only its own backend relay? Are MCP/hooks a cleaner virelia surface there?
 3. How robust is reversible egress tokenization under **function-calling / structured-output** payloads across OpenAI Responses vs Anthropic Messages?
 4. Current (2026) state of **Copilot** custom-endpoint support (#7518 closed, capability version-dependent).
 

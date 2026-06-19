@@ -1,5 +1,5 @@
-from mcp_kavach.models import Action, Finding, Span
-from mcp_kavach.transform import merge_clusters, partial_mask, transform_text
+from virelia.models import Action, Finding, Span
+from virelia.transform import merge_clusters, partial_mask, transform_text
 
 
 def finding(start, end, entity="PHONE", action=Action.MASK, conf=0.9, rule="r1"):

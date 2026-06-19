@@ -1,7 +1,7 @@
 import pytest
 
-from mcp_kavach import PolicyError, load_policy, load_preset, parse_policy
-from mcp_kavach.models import Action
+from virelia import PolicyError, load_policy, load_preset, parse_policy
+from virelia.models import Action
 
 
 def base(**overrides):

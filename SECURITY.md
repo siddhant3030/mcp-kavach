@@ -22,6 +22,6 @@ messages, and vault/key-handling issues once the rehydration vault ships.
 
 ## Scope honesty
 
-kavach protects against *accidental* PII exposure to a model provider. It is
+virelia protects against *accidental* PII exposure to a model provider. It is
 not a sandbox, not a DLP boundary, and does not defend against malicious MCP
 servers or prompt-injection exfiltration — see docs/threat-model.md.

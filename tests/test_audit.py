@@ -1,12 +1,12 @@
 """Audit sinks (JSONL/SQLite/Postgres), source auto-detection, and the
-`kavach audit report` aggregation/CLI."""
+`virelia audit report` aggregation/CLI."""
 
 import sqlite3
 from datetime import datetime, timezone
 
 import pytest
 
-from mcp_kavach.audit import (
+from virelia.audit import (
     JsonlSink,
     PostgresSink,
     SqliteSink,
@@ -15,9 +15,9 @@ from mcp_kavach.audit import (
     event_row,
     open_sink,
 )
-from mcp_kavach.cli.audit import aggregate, format_event, iter_events, parse_when, render_report
-from mcp_kavach.cli.main import main
-from mcp_kavach.models import Action, AuditEvent
+from virelia.cli.audit import aggregate, format_event, iter_events, parse_when, render_report
+from virelia.cli.main import main
+from virelia.models import Action, AuditEvent
 
 
 def make_event(**overrides) -> AuditEvent:
@@ -167,21 +167,21 @@ class TestReport:
         assert "no audit events" in capsys.readouterr().out
 
     def test_cli_report_defaults_to_hook_log(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("KAVACH_DATA_DIR", str(tmp_path))
-        monkeypatch.setenv("KAVACH_CONFIG", str(tmp_path / "no-config.yaml"))
-        monkeypatch.delenv("KAVACH_AUDIT", raising=False)
+        monkeypatch.setenv("VIRELIA_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("VIRELIA_CONFIG", str(tmp_path / "no-config.yaml"))
+        monkeypatch.delenv("VIRELIA_AUDIT", raising=False)
         JsonlSink(tmp_path / "audit.jsonl").emit(FIXTURE[0])
         assert main(["audit", "report"]) == 0
         assert "1 events" in capsys.readouterr().out
 
-    def test_kavach_audit_env_overrides_default_source(self, tmp_path, monkeypatch, capsys):
+    def test_virelia_audit_env_overrides_default_source(self, tmp_path, monkeypatch, capsys):
         db = tmp_path / "audit.db"
         sink = SqliteSink(db)
         sink.emit(FIXTURE[0])
         sink.close()
-        monkeypatch.setenv("KAVACH_DATA_DIR", str(tmp_path))
-        monkeypatch.setenv("KAVACH_CONFIG", str(tmp_path / "no-config.yaml"))
-        monkeypatch.setenv("KAVACH_AUDIT", str(db))
+        monkeypatch.setenv("VIRELIA_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("VIRELIA_CONFIG", str(tmp_path / "no-config.yaml"))
+        monkeypatch.setenv("VIRELIA_AUDIT", str(db))
         assert main(["audit", "report"]) == 0
         assert "1 events" in capsys.readouterr().out
 
@@ -195,10 +195,10 @@ class TestTailHelpers:
 
 class TestHookSinkSelection:
     def test_hooks_write_sqlite_when_configured(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("KAVACH_DATA_DIR", str(tmp_path))
-        monkeypatch.setenv("KAVACH_CONFIG", str(tmp_path / "no-config.yaml"))
-        monkeypatch.setenv("KAVACH_AUDIT", str(tmp_path / "audit.db"))
-        from mcp_kavach.hooks import prompt_guard
+        monkeypatch.setenv("VIRELIA_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("VIRELIA_CONFIG", str(tmp_path / "no-config.yaml"))
+        monkeypatch.setenv("VIRELIA_AUDIT", str(tmp_path / "audit.db"))
+        from virelia.hooks import prompt_guard
 
         out = prompt_guard.handle({"prompt": "mail me at lakshmi@example.org"})
         assert out["decision"] == "block"
@@ -207,10 +207,10 @@ class TestHookSinkSelection:
         assert all("lakshmi" not in e.value_hmac for e in events)
 
     def test_hooks_default_to_jsonl(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("KAVACH_DATA_DIR", str(tmp_path))
-        monkeypatch.setenv("KAVACH_CONFIG", str(tmp_path / "no-config.yaml"))
-        monkeypatch.delenv("KAVACH_AUDIT", raising=False)
-        from mcp_kavach.hooks import prompt_guard
+        monkeypatch.setenv("VIRELIA_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("VIRELIA_CONFIG", str(tmp_path / "no-config.yaml"))
+        monkeypatch.delenv("VIRELIA_AUDIT", raising=False)
+        from virelia.hooks import prompt_guard
 
         prompt_guard.handle({"prompt": "mail me at lakshmi@example.org"})
         assert (tmp_path / "audit.jsonl").exists()
@@ -218,7 +218,7 @@ class TestHookSinkSelection:
 
 class TestPostgres:
     """SQL-shape tests run whenever psycopg is importable; the live round-trip
-    additionally needs KAVACH_TEST_POSTGRES_DSN pointing at a scratch database."""
+    additionally needs VIRELIA_TEST_POSTGRES_DSN pointing at a scratch database."""
 
     def test_emit_sql(self, monkeypatch):
         psycopg = pytest.importorskip("psycopg")
@@ -253,9 +253,9 @@ class TestPostgres:
         import os
 
         pytest.importorskip("psycopg")
-        dsn = os.environ.get("KAVACH_TEST_POSTGRES_DSN")
+        dsn = os.environ.get("VIRELIA_TEST_POSTGRES_DSN")
         if not dsn:
-            pytest.skip("KAVACH_TEST_POSTGRES_DSN not set")
+            pytest.skip("VIRELIA_TEST_POSTGRES_DSN not set")
         import psycopg
 
         with psycopg.connect(dsn, autocommit=True) as conn:
