@@ -7,8 +7,8 @@ import pytest
 
 pytest.importorskip("presidio_analyzer")
 
-from mcp_kavach import Engine, load_preset  # noqa: E402
-from mcp_kavach.detectors import ner  # noqa: E402
+from virelia import Engine, load_preset  # noqa: E402
+from virelia.detectors import ner  # noqa: E402
 
 if not any(ner._find_spec(m) for m in ner._SPACY_MODELS):
     pytest.skip("no spaCy English model installed", allow_module_level=True)

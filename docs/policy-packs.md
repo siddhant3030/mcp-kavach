@@ -2,7 +2,7 @@
 
 > **DRAFT — conservative defaults, not legal advice.** These packs have not
 > been through a requirement-by-requirement legal mapping. That work is tracked
-> in issue [#15](https://github.com/siddhant3030/mcp-kavach/issues/15) for DPDP
+> in issue [#15](https://github.com/siddhant3030/virelia/issues/15) for DPDP
 > and will get its own issues for GDPR and HIPAA. Until then the packs stay
 > deliberately strict: when unsure, they mask or block. Using a pack does not
 > make a deployment compliant with any regulation.
@@ -10,7 +10,7 @@
 Start with a pack instead of writing YAML from scratch:
 
 ```bash
-mcp-kavach proxy --config upstreams.json --policy dpdp   # or gdpr, hipaa-lite
+virelia proxy --config upstreams.json --policy dpdp   # or gdpr, hipaa-lite
 ```
 
 ## What each pack does, entity by entity
@@ -52,7 +52,7 @@ instead of a partial one, and IP addresses are masked instead of allowed.
 
 For teams handling EU residents' data. The GDPR's idea of "personal data" is
 broad — anything that can identify a person directly or indirectly — so this
-pack masks every personal-data entity kavach detects, including IP addresses
+pack masks every personal-data entity virelia detects, including IP addresses
 (which EU courts treat as personal data). Government IDs and financial
 identifiers are blocked outright. Anything detected that no rule covers is
 masked.
@@ -60,13 +60,13 @@ masked.
 ## hipaa-lite — health context
 
 For tools that touch patient or health-program data. It blocks the
-identifiers from the HIPAA Safe Harbor de-identification list that kavach can
+identifiers from the HIPAA Safe Harbor de-identification list that virelia can
 currently detect: names, phones, emails, IP addresses, account numbers,
 government IDs, dates of birth, and addresses. It is the strictest pack:
 anything detected that no rule covers is **blocked**, and the confidence bar
 is lower so borderline detections still count. It is called "lite" because
 the full Safe Harbor list (all date elements, medical record numbers, device
-identifiers, biometrics, photos, …) needs NER and date handling kavach does
+identifiers, biometrics, photos, …) needs NER and date handling virelia does
 not have yet.
 
 ## Known limits (all three packs)

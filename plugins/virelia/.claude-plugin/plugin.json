@@ -1,0 +1,12 @@
+{
+  "name": "virelia",
+  "version": "0.2.0",
+  "description": "PII guardrail for Claude Code — warns before prompts or tool calls share personal data with the model; masks what shouldn't leave.",
+  "author": {
+    "name": "Project Tech4Dev",
+    "url": "https://github.com/siddhant3030/virelia"
+  },
+  "homepage": "https://github.com/siddhant3030/virelia",
+  "repository": "https://github.com/siddhant3030/virelia",
+  "keywords": ["pii", "privacy", "guardrail", "dpdp", "mcp"]
+}

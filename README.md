@@ -1,21 +1,25 @@
 <div align="center">
 
 ```
-██╗  ██╗ █████╗ ██╗   ██╗ █████╗  ██████╗██╗  ██╗
-██║ ██╔╝██╔══██╗██║   ██║██╔══██╗██╔════╝██║  ██║
-█████╔╝ ███████║██║   ██║███████║██║     ███████║
-██╔═██╗ ██╔══██║╚██╗ ██╔╝██╔══██║██║     ██╔══██║
-██║  ██╗██║  ██║ ╚████╔╝ ██║  ██║╚██████╗██║  ██║
-╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+██╗   ██╗ ██╗ ██████╗  ███████╗ ██╗      ██╗  █████╗ 
+██║   ██║ ██║ ██╔══██╗ ██╔════╝ ██║      ██║ ██╔══██╗
+██║   ██║ ██║ ██████╔╝ █████╗   ██║      ██║ ███████║
+╚██╗ ██╔╝ ██║ ██╔══██╗ ██╔══╝   ██║      ██║ ██╔══██║
+ ╚████╔╝  ██║ ██║  ██║ ███████╗ ███████╗ ██║ ██║  ██║
+  ╚═══╝   ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚══════╝ ╚═╝ ╚═╝  ╚═╝
 ```
 
-### The PII guardrail for AI agents — nothing personal leaves your machine unmasked.
+### The local privacy guardrail for AI agents — one guard, both doors.
 
-[![CI](https://github.com/siddhant3030/mcp-kavach/actions/workflows/ci.yml/badge.svg)](https://github.com/siddhant3030/mcp-kavach/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/mcp-kavach)](https://pypi.org/project/mcp-kavach/)
+Mask the personal data and secrets in **what you type into any LLM** *and* in
+**what any MCP server's tools return** — before either reaches a third-party
+model. Fully local, reversible, no cloud in the loop.
+
+[![CI](https://github.com/siddhant3030/virelia/actions/workflows/ci.yml/badge.svg)](https://github.com/siddhant3030/virelia/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/virelia)](https://pypi.org/project/virelia/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-128%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen)](tests/)
 
 **prompts · tool calls · MCP traffic** &nbsp;|&nbsp; detect → ask → mask &nbsp;|&nbsp; checksum-validated &nbsp;|&nbsp; hash-only audit &nbsp;|&nbsp; local-first
 
@@ -27,16 +31,18 @@
 [Docs](#-documentation) ·
 [Roadmap](#-roadmap)
 
-<img src="docs/assets/demo.gif" width="700" alt="kavach scan masking a phone number and blocking an Aadhaar number">
+<img src="docs/assets/demo.gif" width="700" alt="virelia scan masking a phone number and blocking an Aadhaar number">
 
 </div>
 
 ---
 
-*Kavach* (कवच) means **armor**. You type your email into a Claude session, or an
-MCP tool dumps warehouse rows with phone numbers into the model's context —
-and that data is now in a third-party prompt log. kavach sits at every door
-and asks first.
+You type your email into a Claude session, or an MCP tool dumps warehouse rows
+with phone numbers into the model's context — and that data is now in a
+third-party prompt log you don't control. **Virelia** sits at both doors — your
+prompts and your tools' results — and swaps personal data for stand-ins before
+it leaves your machine, keeping the key locally so you can swap the originals
+back. Nothing personal leaves unmasked.
 
 ```
                 ┌─────────────────────────────────────────────┐
@@ -55,14 +61,14 @@ and asks first.
 ## 🚀 Quick start: Claude Code in 60 seconds
 
 ```bash
-uv tool install mcp-kavach        # or: pip install mcp-kavach
+uv tool install virelia        # or: pip install virelia
 ```
 
 Inside Claude Code:
 
 ```
-/plugin marketplace add siddhant3030/mcp-kavach
-/plugin install kavach@kavach
+/plugin marketplace add siddhant3030/virelia
+/plugin install virelia@virelia
 ```
 
 Now try it — type a prompt with an email in it:
@@ -70,7 +76,7 @@ Now try it — type a prompt with an email in it:
 ```
 > my email is sid@example.org, write me a signature
 
-⛔ kavach blocked this prompt — it contains EMAIL (s***@example.org).
+⛔ virelia blocked this prompt — it contains EMAIL (s***@example.org).
 
    Masked version you can copy:
    ┌────────────────────────────────────────────────────┐
@@ -85,23 +91,23 @@ Three guards ship enabled:
 |---|---|---|
 | 🛑 **Prompt guard** | your messages | block + masked copy + confirm-by-resend |
 | ❓ **Tool-input guard** | MCP / Bash / WebFetch calls | native "share this anyway?" dialog |
-| 📢 **Tool-output detector** | MCP results | warning + hash-only audit (mask via [`kavach proxy`](#-mask-mcp-tool-outputs-with-the-proxy)) |
+| 📢 **Tool-output detector** | MCP results | warning + hash-only audit (mask via [`virelia proxy`](#-mask-mcp-tool-outputs-with-the-proxy)) |
 
 Everything is configurable per-guard (`ask` / `mask` / `warn` / `off`) — see
-[docs/claude-plugin.md](docs/claude-plugin.md). No `kavach` CLI installed →
+[docs/claude-plugin.md](docs/claude-plugin.md). No `virelia` CLI installed →
 the plugin stays silent and never breaks your session.
 
 ## 🛡️ Mask MCP tool *outputs* with the proxy
 
-Claude Code hooks can't rewrite a tool result, so kavach ships an MCP gateway:
+Claude Code hooks can't rewrite a tool result, so virelia ships an MCP gateway:
 wrap any server you can't modify, tools are mirrored 1:1, and every result is
 scrubbed before the model sees it.
 
 ```bash
-uv tool install 'mcp-kavach[proxy]'       # the proxy extra pulls in fastmcp
+uv tool install 'virelia[proxy]'       # the proxy extra pulls in fastmcp
 ```
 
-**1. Move your real server into an upstreams file** — `~/.kavach/upstreams.json`,
+**1. Move your real server into an upstreams file** — `~/.virelia/upstreams.json`,
 the standard `.mcp.json` shape (env vars carry over unchanged):
 
 ```json
@@ -125,11 +131,11 @@ setup changes:
 {
   "mcpServers": {
     "warehouse": {
-      "command": "kavach",
+      "command": "virelia",
       "args": ["proxy",
-               "--config", "/Users/you/.kavach/upstreams.json",
+               "--config", "/Users/you/.virelia/upstreams.json",
                "--policy", "ngo-default",
-               "--audit", "/Users/you/.local/share/kavach/audit.jsonl"]
+               "--audit", "/Users/you/.local/share/virelia/audit.jsonl"]
     }
   }
 }
@@ -156,21 +162,21 @@ The proxy also ships as a container — useful when you'd rather not install
 Python tooling on the host, or want the guardrail pinned in CI:
 
 ```bash
-docker build -t kavach .
-docker run -i --rm -v ~/.kavach:/config kavach \
+docker build -t virelia .
+docker run -i --rm -v ~/.virelia:/config virelia \
   proxy --config /config/upstreams.json --policy ngo-default
 ```
 
 Or point your MCP client straight at the container (releases publish
-`ghcr.io/siddhant3030/mcp-kavach`):
+`ghcr.io/siddhant3030/virelia`):
 
 ```json
 {
   "mcpServers": {
     "warehouse": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "/Users/you/.kavach:/config",
-               "ghcr.io/siddhant3030/mcp-kavach",
+      "args": ["run", "-i", "--rm", "-v", "/Users/you/.virelia:/config",
+               "ghcr.io/siddhant3030/virelia",
                "proxy", "--config", "/config/upstreams.json", "--policy", "ngo-default"]
     }
   }
@@ -179,7 +185,7 @@ Or point your MCP client straight at the container (releases publish
 
 `-i` matters: stdio is the MCP protocol channel. One caveat — upstream servers
 defined as *commands* must exist inside the container, so either derive an image
-that installs them (`FROM ghcr.io/siddhant3030/mcp-kavach` + your server) or use
+that installs them (`FROM ghcr.io/siddhant3030/virelia` + your server) or use
 URL-based upstreams.
 
 ## 🔍 What it detects
@@ -206,7 +212,7 @@ Checksums kill most false positives (a random 12-digit number is rejected
 unless it passes Verhoeff). Try it:
 
 ```bash
-$ kavach scan "call me at 9876543210 or lakshmi@example.org"
+$ virelia scan "call me at 9876543210 or lakshmi@example.org"
 call me at ******3210 or l***@example.org
 
 ENTITY           ACTION        RULE                     TIER CONF
@@ -219,7 +225,7 @@ fully local, India-tuned recognizers — see
 [docs/architecture.md](docs/architecture.md#the-ner-tier-ner-extra)):
 
 ```bash
-uv tool install 'mcp-kavach[ner]'        # or: pip install 'mcp-kavach[ner]'
+uv tool install 'virelia[ner]'        # or: pip install 'virelia[ner]'
 python -m spacy download en_core_web_sm
 ```
 
@@ -254,7 +260,7 @@ draft regulation packs `dpdp`, `gdpr`, `hipaa-lite`
 Reference: [docs/policy-schema.md](docs/policy-schema.md). `tokenize` swaps a
 value for a stable, locally-reversible `[PERSON_NAME_1]` token so the same
 person stays the same person across rows — see [docs/vault.md](docs/vault.md)
-and `kavach rehydrate`.
+and `virelia rehydrate`.
 
 ## 🧾 Audit you can show your auditor
 
@@ -262,13 +268,13 @@ Every detection is logged with entity type, detector tier, confidence, the
 rule that fired, JSON path, offsets — and a **salted HMAC instead of the
 value**. The log is safe to show to anyone cleared to see the redacted
 output. *"Which categories of personal data left our infrastructure toward a
-model provider this quarter?"* is one query. `/kavach:status` summarizes it
+model provider this quarter?"* is one query. `/virelia:status` summarizes it
 inside Claude Code.
 
-## 🗺️ Where kavach sits
+## 🗺️ Where virelia sits
 
 Of the four agent-guardrail stages — data collection, model training,
-**agent tools & actions**, prompt/response — kavach owns stage 3 at the MCP
+**agent tools & actions**, prompt/response — virelia owns stage 3 at the MCP
 protocol layer, where structured tool traffic actually exists. LLM gateways
 (Portkey, Kong) guard stage 4; nothing open-source guarded stage 3. Built for
 sovereignty-sensitive deployments (NGOs under India's DPDP Act): fully
@@ -290,11 +296,11 @@ self-hosted, no vendor vault, no SaaS calls, every dependency permissive OSS.
 ## 🐍 Library use (any Python agent, 3 lines)
 
 ```bash
-uv add mcp-kavach        # or: pip install mcp-kavach
+uv add virelia        # or: pip install virelia
 ```
 
 ```python
-from mcp_kavach import Engine, load_preset
+from virelia import Engine, load_preset
 
 engine = Engine(load_preset("ngo-default"))
 result = engine.scan_result("get_beneficiaries", rows)   # masked payload + audit events
@@ -308,7 +314,7 @@ result = engine.scan_result("get_beneficiaries", rows)   # masked payload + audi
 | [Claude Code plugin](docs/claude-plugin.md) | the three guards, per-guard config, proxy setup |
 | [Policy schema](docs/policy-schema.md) | full YAML reference for rules, actions, matching |
 | [Policy packs](docs/policy-packs.md) | draft DPDP / GDPR / HIPAA-lite presets compared |
-| [Threat model](docs/threat-model.md) | what kavach defends against — and what it doesn't |
+| [Threat model](docs/threat-model.md) | what virelia defends against — and what it doesn't |
 | [Demo script](docs/demo-script.md) | a 5-minute walkthrough you can run live |
 
 ## 🛠️ Development
@@ -326,7 +332,7 @@ detectors for more ID systems and an India-tuned NER pack:
 
 - [x] **NER tier** — Presidio + India-tuned recognizers (`[ner]` extra)
 - [ ] **Reversible tokenization vault** with rehydration at trusted sinks
-- [ ] **SQLite/Postgres audit sinks** + `kavach audit` CLI
+- [ ] **SQLite/Postgres audit sinks** + `virelia audit` CLI
 - [x] **Policy packs** — DPDP, GDPR, HIPAA-lite (draft, pending legal mapping in #15)
 - [ ] **Multilingual** detection
 
@@ -340,10 +346,10 @@ not accident ([CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md)).
 
 <div align="center">
 
-**If kavach guards your agents, a ⭐ helps others find it.**
+**If virelia guards your agents, a ⭐ helps others find it.**
 
-[Report a bug](https://github.com/siddhant3030/mcp-kavach/issues) ·
-[Request a feature](https://github.com/siddhant3030/mcp-kavach/issues) ·
+[Report a bug](https://github.com/siddhant3030/virelia/issues) ·
+[Request a feature](https://github.com/siddhant3030/virelia/issues) ·
 [Security policy](SECURITY.md)
 
 </div>

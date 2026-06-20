@@ -11,8 +11,8 @@ from conftest import VALID_AADHAAR
 def hook_env(tmp_path, monkeypatch):
     """Isolate hook state and config from the developer's machine."""
     env = {
-        "KAVACH_DATA_DIR": str(tmp_path / "data"),
-        "KAVACH_CONFIG": str(tmp_path / "no-config.yaml"),
+        "VIRELIA_DATA_DIR": str(tmp_path / "data"),
+        "VIRELIA_CONFIG": str(tmp_path / "no-config.yaml"),
     }
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -21,7 +21,7 @@ def hook_env(tmp_path, monkeypatch):
 
 def run_cli(args, stdin_text, env):
     return subprocess.run(
-        [sys.executable, "-m", "mcp_kavach.cli.main", *args],
+        [sys.executable, "-m", "virelia.cli.main", *args],
         input=stdin_text.encode(),
         capture_output=True,
         env=env,
@@ -68,14 +68,14 @@ class TestPromptGuard:
         assert out["decision"] == "block"
 
     def test_warn_mode_lets_prompt_through(self, hook_env):
-        env = {**hook_env, "KAVACH_PROMPT_MODE": "warn"}
+        env = {**hook_env, "VIRELIA_PROMPT_MODE": "warn"}
         payload = json.dumps({"prompt": "mail lakshmi@example.org"})
         out = hook_out(run_cli(["hook", "prompt-guard"], payload, hook_env | env))
         assert "decision" not in out
         assert "sent as-is" in out["systemMessage"]
 
     def test_off_mode(self, hook_env):
-        env = {**hook_env, "KAVACH_PROMPT_MODE": "off"}
+        env = {**hook_env, "VIRELIA_PROMPT_MODE": "off"}
         out = hook_out(run_cli(["hook", "prompt-guard"], '{"prompt": "a@b.co"}', env))
         assert out is None
 
@@ -101,7 +101,7 @@ class TestToolInputGuard:
         assert out is None
 
     def test_mask_mode_rewrites_input(self, hook_env):
-        env = {**hook_env, "KAVACH_TOOL_INPUT_MODE": "mask"}
+        env = {**hook_env, "VIRELIA_TOOL_INPUT_MODE": "mask"}
         payload = json.dumps(
             {"tool_name": "mcp__crm__update", "tool_input": {"email": "a@b.co", "note": "x"}}
         )
@@ -127,7 +127,7 @@ class TestToolOutputGuard:
         )
         out = hook_out(run_cli(["hook", "tool-output-guard"], payload, hook_env))
         assert "AADHAAR" in out["systemMessage"]
-        assert "kavach proxy" in out["systemMessage"]
+        assert "virelia proxy" in out["systemMessage"]
 
     def test_string_and_content_block_responses(self, hook_env):
         for response in (

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_kavach import Engine, load_preset
+from virelia import Engine, load_preset
 
 CORPUS_DIR = Path(__file__).parent / "fixtures" / "corpus"
 FIXTURES = sorted(CORPUS_DIR.glob("*.json"))

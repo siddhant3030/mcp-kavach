@@ -3,12 +3,12 @@
 Be honest about what this protects against. A privacy tool that overstates its
 coverage is worse than no tool — it manufactures false confidence.
 
-## What mcp-kavach protects against
+## What virelia protects against
 
 **Accidental exposure of personal data to the model provider** (and to anything else
 downstream of the model: transcripts, traces, completions logs). The scenario: an
 agent calls a legitimate tool, the tool legitimately returns warehouse rows, and
-beneficiary PII rides along into the prompt. kavach scrubs the tool result before the
+beneficiary PII rides along into the prompt. virelia scrubs the tool result before the
 model sees it, and scrubs tool arguments before the tool (and its logs) see them.
 
 Secondarily: **compliance evidence**. The hash-only audit trail answers "which
@@ -17,12 +17,12 @@ through which tool" without itself becoming a PII store.
 
 ## What it does NOT protect against
 
-- **A malicious MCP server.** A hostile tool can exfiltrate data on its own; kavach
+- **A malicious MCP server.** A hostile tool can exfiltrate data on its own; virelia
   only filters what flows through the MCP message path it wraps.
 - **Prompt-injection exfiltration.** If injected instructions get the model to call
   an outbound tool with data it already legitimately saw, that's an agent-security
-  problem — pair kavach with a prompt-injection gateway; that's a different layer.
-- **An attacker with access to the host.** kavach runs in-process; it is not a
+  problem — pair virelia with a prompt-injection gateway; that's a different layer.
+- **An attacker with access to the host.** virelia runs in-process; it is not a
   sandbox or a DLP boundary.
 - **Inference from unmasked context.** "The only beneficiary in Rampur who missed a
   checkup" can identify a person without any masked field leaking. Re-identification
@@ -48,7 +48,7 @@ through which tool" without itself becoming a PII store.
 ## Trust boundaries and invariants
 
 - **Audit events never contain plaintext.** Only `audit.hmac_value()` touches the raw
-  string; events store a salted HMAC (salt from `KAVACH_HMAC_SALT` — set it, or
+  string; events store a salted HMAC (salt from `VIRELIA_HMAC_SALT` — set it, or
   per-instance random salts break cross-run correlation). The audit log is safe to
   show to anyone cleared to see the redacted output.
 - **The policy file is attacker-adjacent input**: parsed with `yaml.safe_load`,

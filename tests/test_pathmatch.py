@@ -1,6 +1,6 @@
 import pytest
 
-from mcp_kavach.pathmatch import PathPatternError, compile_path, matches, render_path
+from virelia.pathmatch import PathPatternError, compile_path, matches, render_path
 
 
 def match(pattern, path):

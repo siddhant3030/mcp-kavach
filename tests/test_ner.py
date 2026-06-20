@@ -3,9 +3,9 @@
 
 from types import SimpleNamespace
 
-from mcp_kavach import Engine, load_preset, parse_policy
-from mcp_kavach.detectors import known_entity_types, ner
-from mcp_kavach.models import Span
+from virelia import Engine, load_preset, parse_policy
+from virelia.detectors import known_entity_types, ner
+from virelia.models import Span
 
 TEXT = "My name is Lakshmi Devi and I live in Mumbai"
 

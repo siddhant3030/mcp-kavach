@@ -8,7 +8,7 @@
 
 ## The uncomfortable headline
 
-**The universal positioning is weaker than the [prior India-centric report](2026-06-12-landscape-and-roadmap.md) claimed.** Nearly every individual capability mcp-kavach has is *already shipped* by a free, local-first, model-agnostic open-source competitor. The reversible tokenization we previously called "near-unique" is **not** unique on the prompt side — two MIT-licensed tools do it today.
+**The universal positioning is weaker than the [prior India-centric report](2026-06-12-landscape-and-roadmap.md) claimed.** Nearly every individual capability virelia has is *already shipped* by a free, local-first, model-agnostic open-source competitor. The reversible tokenization we previously called "near-unique" is **not** unique on the prompt side — two MIT-licensed tools do it today.
 
 This does not mean the project is pointless. It means the honest differentiator is narrow and specific, and the marketing line has to change.
 
@@ -24,11 +24,11 @@ People recognize this pain and are building tools for it. That's the good news a
 
 ## 2. Capability matrix — what already exists
 
-Scored on the seven properties that define mcp-kavach's pitch:
+Scored on the seven properties that define virelia's pitch:
 
 | Tool | Local-first | Model-agnostic | Masks (not just detect) | Covers typed prompts | Covers any MCP server | Reversible tokens | OSS + free |
 |---|---|---|---|---|---|---|---|
-| **mcp-kavach** | ✅ | ✅ | ✅ | ✅ (Claude Code hooks) | ✅ (proxy) | ✅ (vault + rehydrate) | ✅ Apache-2.0 |
+| **virelia** | ✅ | ✅ | ✅ | ✅ (Claude Code hooks) | ✅ (proxy) | ✅ (vault + rehydrate) | ✅ Apache-2.0 |
 | **ceil-dlp** (MIT) | ✅ | ✅ | ✅ | ✅ | ❌ LiteLLM-bound, no native MCP | ✅ rehydrates | ✅ |
 | **LLM Guard** (MIT, ProtectAI) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ Vault + Deanonymize | ✅ |
 | **Prompt Armour** | ✅ client-side | ✅ web chats | ✅ | ✅ browser only | ❌ | partial | extension (closed, ~36 users) |
@@ -58,7 +58,7 @@ Each rival covers a subset:
 - any MCP server + masking, but one-way / no prompt side → conceal, Lasso
 - both surfaces but weak reversibility and buggy → LiteLLM
 
-mcp-kavach is the only one that (claims to) do all of it with one policy engine and one audit trail. **That is the line — but it's an "absence" argument** (nobody else bundles all seven), which is the weakest kind of moat. See risks.
+virelia is the only one that (claims to) do all of it with one policy engine and one audit trail. **That is the line — but it's an "absence" argument** (nobody else bundles all seven), which is the weakest kind of moat. See risks.
 
 ## 5. Positioning (no India, no DPDP)
 

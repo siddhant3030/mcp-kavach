@@ -3,8 +3,8 @@ import json
 
 from conftest import VALID_AADHAAR
 
-from mcp_kavach import Engine, InMemorySink, load_preset, parse_policy
-from mcp_kavach.models import Action
+from virelia import Engine, InMemorySink, load_preset, parse_policy
+from virelia.models import Action
 
 GROUPED_AADHAAR = f"{VALID_AADHAAR[:4]} {VALID_AADHAAR[4:8]} {VALID_AADHAAR[8:]}"
 
@@ -85,7 +85,7 @@ class TestBlockedResult:
         token = "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"
         result = engine.scan_result("get_config", {"note": f"use {token}"})
         assert result.blocked
-        assert result.payload["error"] == "blocked by mcp-kavach"
+        assert result.payload["error"] == "blocked by virelia"
         assert result.payload["rule"] == "secrets-kill"
         assert "credential" in result.block_reason
         assert token not in json.dumps(result.payload)

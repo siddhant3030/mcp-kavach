@@ -18,7 +18,7 @@ coat-check (you, locally) can swap tickets back for coats. Concretely:
 - The model sees only tickets. It can dedupe, join, and reason about
   "`[PERSON_NAME_1]`'s three visits" without ever seeing a name.
 - At a **trusted sink** — your terminal, your report generator, anything that
-  runs on your machine after the model is done — `kavach rehydrate` swaps the
+  runs on your machine after the model is done — `virelia rehydrate` swaps the
   tickets back for the real values.
 
 ## Enabling it
@@ -27,7 +27,7 @@ Install the extra (the vault encrypts values with Fernet from the
 `cryptography` package):
 
 ```bash
-pip install 'mcp-kavach[vault]'
+pip install 'virelia[vault]'
 ```
 
 Use the `tokenize` action in your policy:
@@ -42,38 +42,38 @@ rules:
 Then give the engine a vault — via the CLI:
 
 ```bash
-kavach scan "Lakshmi Devi called Lakshmi Devi" --policy my.yaml --vault
-kavach proxy --config mcp.json --policy my.yaml --vault
+virelia scan "Lakshmi Devi called Lakshmi Devi" --policy my.yaml --vault
+virelia proxy --config mcp.json --policy my.yaml --vault
 ```
 
 or in Python:
 
 ```python
-from mcp_kavach import Engine, Vault, load_policy
+from virelia import Engine, Vault, load_policy
 
 engine = Engine(load_policy("my.yaml"), vault=Vault())
 ```
 
 `--vault` with no path uses the default location,
-`$KAVACH_DATA_DIR/vault.db` (usually `~/.local/share/kavach/vault.db`).
+`$VIRELIA_DATA_DIR/vault.db` (usually `~/.local/share/virelia/vault.db`).
 
 **Fail-safe:** if a policy says `tokenize` but no vault is configured (or the
-extra isn't installed), kavach logs a warning and falls back to plain
+extra isn't installed), virelia logs a warning and falls back to plain
 `mask` — values are still hidden, you just lose consistency and reversibility.
 
 ## Getting the values back (the trusted sink)
 
 ```bash
 # from a file
-kavach rehydrate report.md > report-with-names.md
+virelia rehydrate report.md > report-with-names.md
 # or from stdin
-echo "follow up with [PERSON_NAME_1] at [PHONE_1]" | kavach rehydrate
+echo "follow up with [PERSON_NAME_1] at [PHONE_1]" | virelia rehydrate
 ```
 
 Or in Python — works on strings or whole nested payloads:
 
 ```python
-from mcp_kavach.vault import rehydrate
+from virelia.vault import rehydrate
 original = rehydrate(model_output)
 ```
 
@@ -109,7 +109,7 @@ is present.
 ## Security notes — read this
 
 - **The vault file plus its key *are* your PII.** Anyone with both can
-  rehydrate every token ever issued. Protect `~/.local/share/kavach/` like a
+  rehydrate every token ever issued. Protect `~/.local/share/virelia/` like a
   password store: don't commit it, don't sync it to shared drives, don't ship
   it in backups that others can read.
 - Tokens leak *linkage* by design: the model (and its provider) can tell that

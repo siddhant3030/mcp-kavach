@@ -2,8 +2,8 @@
 
 ## The big picture
 
-kavach sits between an AI agent and the places its data comes from. Whenever a
-payload passes through — a tool result, a prompt, tool arguments — kavach scans
+virelia sits between an AI agent and the places its data comes from. Whenever a
+payload passes through — a tool result, a prompt, tool arguments — virelia scans
 it for personal data and rewrites it according to a policy *before* the model
 ever sees it.
 
@@ -129,12 +129,12 @@ Each tier catches what the previous one can't, and costs more than it:
 
 Research on PII detection consistently shows the failure modes are
 complementary — regex lacks semantic understanding; NER has limited type
-coverage — which is why kavach layers them instead of betting on either.
+coverage — which is why virelia layers them instead of betting on either.
 
 ## The NER tier (`[ner]` extra)
 
 ```bash
-uv tool install 'mcp-kavach[ner]'        # or: pip install 'mcp-kavach[ner]'
+uv tool install 'virelia[ner]'        # or: pip install 'virelia[ner]'
 python -m spacy download en_core_web_sm  # any en_core_web_* model works
 ```
 
@@ -164,7 +164,7 @@ installed), `false` (never). With `auto`, the `personal` and `dev` presets
 keep the tier off; `ngo-default` and `strict` use it when installed.
 
 One operational note: Claude Code hook processes are short-lived, so each
-invocation pays the spaCy model load. The long-lived proxy (`kavach proxy`)
+invocation pays the spaCy model load. The long-lived proxy (`virelia proxy`)
 is the right surface for NER.
 
 ## Performance posture
@@ -186,7 +186,7 @@ same three responsibilities: scan tool arguments before the tool runs, scan the
 result before it returns, and surface `result.blocked` as a refusal the caller
 understands.
 
-- **`adapters/fastmcp_middleware.py`** — `KavachMiddleware` for FastMCP 3.x
+- **`adapters/fastmcp_middleware.py`** — `VireliaMiddleware` for FastMCP 3.x
   servers and proxies (the `on_call_tool` hook; lazy-imported behind the
   `[proxy]` extra). It scans `structured_content` and text content blocks —
   text that looks like JSON is parsed first so structural path rules still
@@ -195,18 +195,18 @@ understands.
   through unscanned. ⚠️ Note: the FastMCP 1.x bundled inside the official
   `mcp` SDK (`mcp.server.fastmcp`) has **no middleware system** — servers built
   on it need a migration or a tool-wrapper shim.
-- **`adapters/proxy.py` / `kavach proxy`** — a standalone gateway for upstream
+- **`adapters/proxy.py` / `virelia proxy`** — a standalone gateway for upstream
   MCP servers you can't modify, built on fastmcp's `create_proxy`. With one
   upstream, tools are mirrored 1:1 under their original names; with several,
   fastmcp prefixes them `{server}_{tool}` (remember this when writing policy
   tool globs). In stdio mode stdout *is* the MCP protocol channel, so all
   logging goes to stderr.
-- **`hooks/` + the Claude Code plugin** (`plugins/kavach/`) — three guards:
+- **`hooks/` + the Claude Code plugin** (`plugins/virelia/`) — three guards:
   the prompt guard (block + confirm-by-resend), the tool-input guard (ask or
   mask via `permissionDecision`/`updatedInput`), and the tool-output detector.
   The output guard is warn-only because Claude Code's PostToolUse hooks cannot
   rewrite a result — masking outputs is exactly what the proxy is for. Hooks
-  fail open: if the `kavach` CLI is missing, the session is never broken. See
+  fail open: if the `virelia` CLI is missing, the session is never broken. See
   [claude-plugin.md](claude-plugin.md).
 
 ## Open-source guarantee
